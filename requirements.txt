@@ -4,6 +4,20 @@ playwright
 requests
 selenium
 streamlit
-
 supabase
 altair<5
+base58 = "*"
+blinker = "*"
+boto3 = "*"
+botocore
+cachetools
+click
+enum-compat
+numpy
+packaging
+protobuf
+pyarrow
+pydeck
+python-dateutil
+requests
+standard-imghdr
