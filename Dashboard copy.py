@@ -356,6 +356,7 @@ label{
   opacity: .92;
 }
 </style>
+
 /* ===== REMOVER BOX-SHADOW DE TODOS INPUTS (FORÇADO) ===== */
 
 /* BaseWeb (Streamlit) - remove shadow do container e de tudo dentro */
@@ -1043,4 +1044,5 @@ if menu == "Logs":
         st.dataframe(pd.DataFrame(logs), use_container_width=True)
     else:
         st.info("Nenhum log registrado")
+
 
