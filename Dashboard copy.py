@@ -30,8 +30,14 @@ STATUS_OPCOES = [
 # ================= CSS (LEVE) =================
 st.markdown("""
 <style>
-body { background:#263d33; }
+/* ===== Base ===== */
+.stApp { background:#263d33; color:#eaf2ef; }
+section[data-testid="stSidebar"]{
+  background:#1b2e28;
+  border-right:1px solid #3d5e52;
+}
 
+/* ===== Cards ===== */
 .card{
   background:#1f332c;
   border:1px solid #3d5e52;
@@ -53,6 +59,7 @@ body { background:#263d33; }
   margin:6px 0 10px 0;
 }
 
+/* ===== Botão IA ===== */
 button[key^="ia_"]{
   background:linear-gradient(135deg,#d4b15c,#b18b3b) !important;
   color:#263d33 !important;
@@ -64,9 +71,80 @@ button[key^="ia_"]{
   70%{box-shadow:0 0 0 10px rgba(212,177,92,0);}
   100%{box-shadow:0 0 0 0 rgba(212,177,92,0);}
 }
-section[data-testid="stSidebar"]{
-  background:#1b2e28;
-  border-right:1px solid #3d5e52;
+
+/* ===== Login (mais escuro que a logo, intuitivo) ===== */
+.login-wrap{
+  max-width: 420px;
+  margin: 7.5vh auto 0 auto;
+}
+.login-box{
+  background:#182a24;              /* verde mais escuro (contraste) */
+  border:1px solid #3d5e52;
+  border-radius:22px;
+  padding:26px;
+  box-shadow:0 18px 44px rgba(0,0,0,.35);
+}
+.login-logo{
+  width: 210px;
+  margin: 0 auto 12px auto;
+  display:block;
+  border-radius: 14px;
+  border:1px solid #3d5e52;
+  background:#1f332c;
+}
+.login-title{
+  text-align:center;
+  color:#d4b15c;
+  font-weight:900;
+  font-size: 1.10rem;
+  margin: 4px 0 6px 0;
+}
+.login-sub{
+  text-align:center;
+  color:#bfd1ca;
+  font-weight:600;
+  font-size:.92rem;
+  margin: 0 0 14px 0;
+}
+.login-hint{
+  text-align:center;
+  color:#bfd1ca;
+  font-size:.86rem;
+  margin-top: 10px;
+  opacity: .92;
+}
+
+/* Inputs mais “premium” */
+[data-baseweb="input"] > div{
+  background:#1f332c !important;
+  border:1px solid #3d5e52 !important;
+  border-radius:14px !important;
+}
+input{
+  color:#eaf2ef !important;
+}
+label{
+  color:#bfd1ca !important;
+  font-weight:700 !important;
+}
+
+/* Botão do login com destaque */
+.stButton > button{
+  background:linear-gradient(135deg,#d4b15c,#b18b3b) !important;
+  color:#263d33 !important;
+  font-weight:900 !important;
+  border:0 !important;
+  border-radius:14px !important;
+  padding:.62rem 1rem !important;
+  transition: transform .12s ease, filter .12s ease;
+}
+.stButton > button:hover{
+  filter: brightness(1.06);
+  transform: translateY(-1px);
+}
+.stButton > button:active{
+  transform: translateY(0px);
+  filter: brightness(1.02);
 }
 </style>
 """, unsafe_allow_html=True)
@@ -137,11 +215,15 @@ def carregar_usuarios():
 def carregar_logs():
     return supabase.table("logs").select("*").order("id", desc=True).limit(200).execute().data
 
-# ================= LOGIN =================
+# ================= LOGIN (VISUAL NOVO) =================
 def login():
-    st.image(LOGO_URL, width=180)
-    u = st.text_input("Usuário")
-    s = st.text_input("Senha", type="password")
+    st.markdown('<div class="login-wrap"><div class="login-box">', unsafe_allow_html=True)
+    st.markdown(f'<img class="login-logo" src="{LOGO_URL}">', unsafe_allow_html=True)
+    st.markdown('<div class="login-title">Acesso ao CRM</div>', unsafe_allow_html=True)
+    st.markdown('<div class="login-sub">Entre com seu usuário e senha para continuar</div>', unsafe_allow_html=True)
+
+    u = st.text_input("Usuário", placeholder="Ex: operador1")
+    s = st.text_input("Senha", type="password", placeholder="Digite sua senha")
 
     if st.button("🔐 Entrar", use_container_width=True):
         r = supabase.table("usuarios").select("*").eq("usuario", u).execute().data
@@ -151,6 +233,9 @@ def login():
             st.session_state.update({"logado": True, "usuario": u, "nivel": r[0]["nivel"]})
             registrar_log("Login")
             st.rerun()
+
+    st.markdown('<div class="login-hint">🔒 Acesso restrito • Se estiver bloqueado, fale com o administrador</div>', unsafe_allow_html=True)
+    st.markdown("</div></div>", unsafe_allow_html=True)
 
 # ================= SESSÃO =================
 if "logado" not in st.session_state:
@@ -226,19 +311,19 @@ if menu == "CRM":
 
             if b3.button("📲 WhatsApp", key=f"w_{c['id']}"):
                 msg = st.session_state.get(f"msg_{c['id']}") or gerar_mensagem_ia(c)
-                st.link_button("Abrir WhatsApp", gerar_link_whatsapp(c.get("telefone",""), msg), use_container_width=True)
+                st.link_button("Abrir WhatsApp", gerar_link_whatsapp(c.get("telefone", ""), msg), use_container_width=True)
 
             if st.session_state.get("edit_id") == c["id"]:
                 with st.form(f"edit_form_{c['id']}"):
                     st.markdown("**Editar cliente**")
-                    banco_e = st.text_input("Banco", c.get("banco",""))
-                    tipo_e = st.text_input("Tipo", c.get("tipo_contrato",""))
+                    banco_e = st.text_input("Banco", c.get("banco", ""))
+                    tipo_e = st.text_input("Tipo", c.get("tipo_contrato", ""))
                     status_e = st.selectbox(
                         "Status",
                         STATUS_OPCOES,
                         index=STATUS_OPCOES.index(c.get("status")) if c.get("status") in STATUS_OPCOES else 0
                     )
-                    obs_e = st.text_area("Observações", c.get("observacoes",""))
+                    obs_e = st.text_area("Observações", c.get("observacoes", ""))
                     if st.form_submit_button("💾 Atualizar", use_container_width=True):
                         supabase.table("clientes").update({
                             "banco": banco_e,
@@ -246,7 +331,7 @@ if menu == "CRM":
                             "status": status_e,
                             "observacoes": obs_e
                         }).eq("id", c["id"]).execute()
-                        registrar_log(f"Atualizou cliente {c.get('nome','')}")
+                        registrar_log(f"Atualizou cliente {c.get('nome', '')}")
                         st.session_state.pop("edit_id", None)
                         st.cache_data.clear()
                         st.rerun()
@@ -281,7 +366,7 @@ if menu == "Usuários":
             col1, col2, col3 = st.columns(3)
 
             with col1:
-                usuario_e = st.text_input("Usuário", u.get("usuario",""), key=f"user_{u['id']}")
+                usuario_e = st.text_input("Usuário", u.get("usuario", ""), key=f"user_{u['id']}")
                 nivel_e = st.selectbox(
                     "Nível",
                     ["operador", "admin"],
