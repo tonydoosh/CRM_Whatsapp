@@ -82,7 +82,9 @@ DEFAULT_RETIRAR_FATURAS = [
 ]
 
 # ================= CSS (LEVE) =================
-st.markdown("""
+# (Corrigido: SEM <style> aninhado, e removendo bordas pretas/outline de inputs/botões no site todo)
+st.markdown(
+    """
 <style>
 /* ===== Base ===== */
 .stApp { background:#263d33; color:#eaf2ef; }
@@ -235,24 +237,11 @@ button[key^="ia_"]{
   background:#1f332c;
 }
 
-/* inputs */
-[data-baseweb="input"] > div{
-  background:#1f332c !important;
-  border:1px solid #3d5e52 !important;
-  border-radius:14px !important;
-}
-input{ color:#eaf2ef !important; }
-label{
-  color:#bfd1ca !important;
-  font-weight:700 !important;
-}
-
-<style>
 /* ==============================
-   REMOVER BORDAS PRETAS / FOCUS
+   REMOVER BORDAS PRETAS / FOCUS (SITE TODO)
    ============================== */
 
-/* Inputs padrão */
+/* Inputs padrão (inclui login) */
 [data-baseweb="input"] > div{
   background:#1f332c !important;
   border:1px solid #3d5e52 !important;
@@ -260,23 +249,18 @@ label{
   box-shadow:none !important;
   outline:none !important;
 }
+input{ color:#eaf2ef !important; }
 
-/* Quando o input está em foco */
+/* Focus bonito (sem borda preta) */
 [data-baseweb="input"] > div:focus-within{
-  border:1px solid #d4b15c !important;   /* dourado suave */
+  border:1px solid #d4b15c !important;
   box-shadow:0 0 0 1px rgba(212,177,92,.35) !important;
   outline:none !important;
 }
 
-/* Input de senha (ícone do olho incluso) */
+/* Ícones dentro do input (olhinho etc.) */
 [data-baseweb="input"] svg{
   color:#bfd1ca !important;
-}
-
-/* Remove outline global (tecla TAB / focus invisível) */
-*:focus{
-  outline:none !important;
-  box-shadow:none !important;
 }
 
 /* Textarea */
@@ -285,6 +269,12 @@ label{
   border:1px solid #3d5e52 !important;
   border-radius:14px !important;
   box-shadow:none !important;
+  outline:none !important;
+}
+[data-baseweb="textarea"] > div:focus-within{
+  border:1px solid #d4b15c !important;
+  box-shadow:0 0 0 1px rgba(212,177,92,.35) !important;
+  outline:none !important;
 }
 
 /* Selectbox */
@@ -293,34 +283,57 @@ label{
   border:1px solid #3d5e52 !important;
   border-radius:14px !important;
   box-shadow:none !important;
+  outline:none !important;
 }
-
-/* Focus do select */
 [data-baseweb="select"] > div:focus-within{
   border:1px solid #d4b15c !important;
   box-shadow:0 0 0 1px rgba(212,177,92,.35) !important;
+  outline:none !important;
 }
-</style>
 
-/* botões */
+/* Evita “outline” feio global */
+*:focus,
+*:focus-visible{
+  outline:none !important;
+}
+
+/* ===== Botões (sem borda preta, mantendo estilo) ===== */
 .stButton > button{
   background:linear-gradient(135deg,#d4b15c,#b18b3b) !important;
   color:#263d33 !important;
   font-weight:900 !important;
+
   border:0 !important;
+  outline:none !important;
+  box-shadow:none !important;
+
   border-radius:14px !important;
   padding:.62rem 1rem !important;
-  transition: transform .12s ease, filter .12s ease;
+  transition: transform .12s ease, filter .12s ease, box-shadow .18s ease;
 }
 .stButton > button:hover{
   filter: brightness(1.06);
   transform: translateY(-1px);
+  box-shadow:0 8px 18px rgba(0,0,0,.28) !important;
 }
 .stButton > button:active{
   transform: translateY(0px);
   filter: brightness(1.02);
+  box-shadow:0 4px 10px rgba(0,0,0,.22) !important;
+}
+.stButton > button:focus,
+.stButton > button:focus-visible{
+  outline:none !important;
+  box-shadow:0 0 0 2px rgba(212,177,92,.35) !important;
 }
 
+/* ===== Labels ===== */
+label{
+  color:#bfd1ca !important;
+  font-weight:700 !important;
+}
+
+/* ===== Login texts (mantém dourado) ===== */
 .login-title{
   text-align:center;
   color:#d4b15c;
@@ -343,7 +356,9 @@ label{
   opacity: .92;
 }
 </style>
-""", unsafe_allow_html=True)
+""",
+    unsafe_allow_html=True,
+)
 
 # ================= FUNÇÕES =================
 def gerar_hash(s: str) -> str:
@@ -462,12 +477,6 @@ def _default_faturas_map():
 
 @st.cache_data(ttl=86400)
 def carregar_retirar_faturas():
-    """
-    Busca no Supabase a tabela 'retirar_faturas' (se existir).
-    Se não existir/der erro, retorna a base default (sem quebrar o app).
-    Esperado na tabela:
-      banco (texto único), titulo (texto), conteudo (texto), updated_at (timestamp opcional), updated_by (texto opcional)
-    """
     base = _default_faturas_map()
     try:
         rows = supabase.table("retirar_faturas").select("*").execute().data or []
@@ -482,15 +491,11 @@ def carregar_retirar_faturas():
                 "updated_at": r.get("updated_at"),
                 "updated_by": r.get("updated_by"),
             }
-        return base, True  # True = conseguiu ler do banco (ou pelo menos a tabela existe)
+        return base, True
     except Exception:
         return base, False
 
 def salvar_retirar_faturas_item(banco: str, titulo: str, conteudo: str):
-    """
-    Tenta gravar no Supabase via upsert em 'retirar_faturas'.
-    Se tabela não existir, lança exceção e a UI mostra aviso (sem quebrar).
-    """
     payload = {
         "banco": banco,
         "titulo": titulo,
@@ -498,7 +503,6 @@ def salvar_retirar_faturas_item(banco: str, titulo: str, conteudo: str):
         "updated_at": datetime.now().isoformat(),
         "updated_by": st.session_state.get("usuario"),
     }
-    # on_conflict = banco (precisa ser unique na tabela)
     supabase.table("retirar_faturas").upsert(payload, on_conflict="banco").execute()
 
 # ================= LOGIN =================
@@ -546,7 +550,6 @@ if "logado" not in st.session_state:
 if "confirm_delete_id" not in st.session_state:
     st.session_state.confirm_delete_id = None
 
-# filtros/pesquisa/ordenação
 if "f_status" not in st.session_state:
     st.session_state.f_status = "Todos"
 if "f_banco" not in st.session_state:
@@ -558,7 +561,6 @@ if "f_order" not in st.session_state:
 if "search_raw" not in st.session_state:
     st.session_state.search_raw = ""
 
-# modal excluir
 if "delete_cliente" not in st.session_state:
     st.session_state.delete_cliente = None
 
@@ -570,7 +572,6 @@ if not st.session_state.get("logado"):
 st.sidebar.image(LOGO_URL, use_container_width=True)
 st.sidebar.markdown("---")
 
-# ✅ Aba nova abaixo de "CRM": "Retirar Faturas"
 menu = st.sidebar.radio(
     "Menu",
     ["CRM", "Retirar Faturas", "Usuários", "Logs"] if st.session_state.get("nivel") == "admin" else ["CRM", "Retirar Faturas"]
@@ -612,7 +613,6 @@ if menu == "CRM":
 
     clientes = carregar_clientes(st.session_state.get("nivel"), st.session_state.get("usuario")) or []
 
-    # ====== RESUMOS NO TOPO (KPIs) ======
     total = len(clientes)
     cont_status = {s: 0 for s in STATUS_OPCOES}
     for c in clientes:
@@ -656,7 +656,6 @@ if menu == "CRM":
 
     st.markdown("<div style='height:10px'></div>", unsafe_allow_html=True)
 
-    # ====== FILTROS + BUSCA + ORDENAÇÃO ======
     bancos_unicos = sorted({(c.get("banco") or "").strip() for c in clientes if (c.get("banco") or "").strip()})
     tipos_unicos = sorted({(c.get("tipo_contrato") or "").strip() for c in clientes if (c.get("tipo_contrato") or "").strip()})
 
@@ -688,7 +687,6 @@ if menu == "CRM":
                 st.session_state.search_raw = ""
                 st.rerun()
 
-    # ====== APLICA FILTROS ======
     q = (st.session_state.search_raw or "").strip().lower()
 
     def _match_busca(c: dict) -> bool:
@@ -713,7 +711,6 @@ if menu == "CRM":
             continue
         filtrados.append(c)
 
-    # ====== ORDENAÇÃO ======
     status_rank = {s: i for i, s in enumerate(STATUS_OPCOES)}
 
     def _key_recente(c: dict):
@@ -730,7 +727,6 @@ if menu == "CRM":
     else:
         filtrados.sort(key=_key_recente, reverse=True)
 
-    # ====== MODAL EXCLUIR ======
     def abrir_modal_excluir(c: dict):
         st.session_state.delete_cliente = {
             "id": c.get("id"),
@@ -765,7 +761,6 @@ if menu == "CRM":
     st.caption(f"📌 Exibindo **{len(filtrados)}** cliente(s) (após filtros)")
     st.divider()
 
-    # ✅ 1 COLUNA
     cols = st.columns(1)
 
     for i, c in enumerate(filtrados):
@@ -849,7 +844,6 @@ Para dar andamento corretamente às análises e solicitações junto aos bancos,
 
     faturas_map, conseguiu_ler_db = carregar_retirar_faturas()
 
-    # barra de ferramentas
     t1, t2, t3 = st.columns([2.2, 1.2, 1.2])
     with t1:
         busca_banco = st.text_input("🔎 Buscar banco", placeholder="Ex: PAN, BMG, DIGIMAIS...")
@@ -885,7 +879,6 @@ Para dar andamento corretamente às análises e solicitações junto aos bancos,
                 st.caption(linha)
 
             if st.session_state.get("nivel") == "admin":
-                # edição interativa (persistente se tabela existir)
                 titulo_e = st.text_input("Título", value=titulo, key=f"fat_tit_{banco}")
                 conteudo_e = st.text_area("Informações (uma por linha / pode colar texto)", value=conteudo, height=220, key=f"fat_con_{banco}")
 
@@ -915,7 +908,6 @@ Para dar andamento corretamente às análises e solicitações junto aos bancos,
                 st.markdown("### Prévia")
                 st.markdown(conteudo_e.replace("\n", "  \n"))
             else:
-                # somente leitura
                 st.markdown(conteudo.replace("\n", "  \n"))
 
     if modo == "Selecionar banco":
@@ -1002,4 +994,3 @@ if menu == "Logs":
         st.dataframe(pd.DataFrame(logs), use_container_width=True)
     else:
         st.info("Nenhum log registrado")
-
