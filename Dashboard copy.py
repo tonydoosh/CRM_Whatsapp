@@ -196,11 +196,101 @@ if menu == "CRM":
                 if f"ia_{row['id']}" in st.session_state:
                     st.text_area("Mensagem IA", st.session_state[f"ia_{row['id']}"], height=120)
 
+
 # ---------- USUÁRIOS ----------
 if menu == "Usuários":
+    st.title("👤 Gestão de Usuários (Operadores)")
+
+if menu == "Usuários":
     st.dataframe(pd.DataFrame(carregar_usuarios()), use_container_width=True)
+   
+    st.subheader("➕ Adicionar Usuário")
+    with st.form("form_add_user"):
+        col1, col2, col3 = st.columns(3)
+        with col1:
+            novo_usuario = st.text_input("Usuário *")
+            nova_senha = st.text_input("Senha *", type="password")
+        with col2:
+            nivel = st.selectbox("Nível *", ["operador", "admin"])
+        with col3:
+            ativo = st.selectbox("Ativo", [True, False])
+
+        if st.form_submit_button("Salvar usuário", use_container_width=True):
+            if not novo_usuario or not nova_senha:
+                st.error("Preencha usuário e senha")
+            else:
+                supabase.table("usuarios").insert({
+                    "usuario": novo_usuario,
+                    "senha": gerar_hash(nova_senha),
+                    "nivel": nivel,
+                    "ativo": ativo
+                }).execute()
+                registrar_log(f"Criou usuário {novo_usuario}")
+                st.cache_data.clear()
+                st.rerun()
+
+    st.divider()
+    st.subheader("📋 Usuários cadastrados")
+
+    usuarios = carregar_usuarios()
+    df_users = pd.DataFrame(usuarios) if usuarios else pd.DataFrame()
+
+    if df_users.empty:
+        st.info("Nenhum usuário encontrado")
+    else:
+        for _, row in df_users.iterrows():
+            with st.expander(f"{row['usuario']} | {row['nivel']} | {'Ativo' if row['ativo'] else 'Inativo'}"):
+                col1, col2, col3 = st.columns(3)
+
+                with col1:
+                    usuario_e = st.text_input(
+                        "Usuário",
+                        row["usuario"],
+                        key=f"user_{row['id']}"
+                    )
+                    nivel_e = st.selectbox(
+                        "Nível",
+                        ["operador", "admin"],
+                        index=0 if row["nivel"] == "operador" else 1,
+                        key=f"nivel_{row['id']}"
+                    )
+
+                with col2:
+                    ativo_e = st.selectbox(
+                        "Ativo",
+                        [True, False],
+                        index=0 if row["ativo"] else 1,
+                        key=f"ativo_{row['id']}"
+                    )
+                    nova_senha_e = st.text_input(
+                        "Nova senha (opcional)",
+                        type="password",
+                        key=f"senha_{row['id']}"
+                    )
+
+                with col3:
+                    if st.button("💾 Atualizar", key=f"up_{row['id']}"):
+                        dados = {
+                            "usuario": usuario_e,
+                            "nivel": nivel_e,
+                            "ativo": ativo_e
+                        }
+                        if nova_senha_e:
+                            dados["senha"] = gerar_hash(nova_senha_e)
+
+                        supabase.table("usuarios").update(dados).eq("id", row["id"]).execute()
+                        registrar_log(f"Atualizou usuário {usuario_e}")
+                        st.cache_data.clear()
+                        st.rerun()
+
+                    if st.button("🗑️ Excluir", key=f"del_{row['id']}"):
+                        supabase.table("usuarios").delete().eq("id", row["id"]).execute()
+                        registrar_log(f"Excluiu usuário {row['usuario']}")
+                        st.cache_data.clear()
+                        st.rerun()
 
 # ---------- LOGS ----------
 if menu == "Logs":
     st.dataframe(pd.DataFrame(carregar_logs()), use_container_width=True)
+
 
