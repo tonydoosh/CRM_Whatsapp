@@ -27,6 +27,60 @@ STATUS_OPCOES = [
     "cancelado",
 ]
 
+# ================= BASE DEFAULT (Retirar Faturas) =================
+DEFAULT_RETIRAR_FATURAS = [
+    {
+        "banco": "BANCO PAN",
+        "titulo": "🏦 BANCO PAN – Solicitação de Fatura",
+        "conteudo": "• Número do cliente\n• E-mail atualizado\n• Contracheque recente\n• Disponibilidade para contato via WhatsApp",
+    },
+    {
+        "banco": "BANCO BMG",
+        "titulo": "🏦 BANCO BMG – Solicitação de Fatura ou Boleto",
+        "conteudo": "• E-mail atualizado\n• Contracheque recente\n• Documento de identificação (RG ou CNH – frente e verso)\n• Comprovante de endereço atualizado (com CEP)\n• Disponibilidade para contato via WhatsApp",
+    },
+    {
+        "banco": "BANCO DAYCOVAL",
+        "titulo": "🏦 BANCO DAYCOVAL – Solicitação dos últimos 4 dígitos do cartão",
+        "conteudo": "• E-mail atualizado\n• Contracheque recente\n• Documento de identificação (RG ou CNH – frente e verso)\n• Comprovante de endereço atualizado (com CEP)",
+    },
+    {
+        "banco": "BANCO SANTANDER",
+        "titulo": "🏦 BANCO SANTANDER – Solicitação de Fatura",
+        "conteudo": "• E-mail atualizado\n• Contracheque recente\n• Disponibilidade para contato via WhatsApp",
+    },
+    {
+        "banco": "BANCO PINE",
+        "titulo": "🏦 BANCO PINE – Cartão Amigo Z (Quitação / Boleto)",
+        "conteudo": "⚠️ Solicitação feita exclusivamente por telefone, pelos canais oficiais:\n\n• SAC ou Ouvidoria\n• Horário da Ouvidoria: 09h às 18h (exceto fins de semana e feriados)\n• Documentos solicitados: CPF, RG e número do contrato\n• Solicitar saldo devedor para quitação total e instruções de pagamento\n\n🔔 Atenções importantes – Banco Pine\n• O Banco Pine só efetua o pagamento de faturas em dia\n• Caso a fatura seja paga em atraso, o banco pode levar até 1 mês para liberar a quitação\n• Confirmar sempre os dados bancários oficiais antes do pagamento\n• Guardar o comprovante\n• Solicitar o termo de quitação após o pagamento\n• Em caso de dificuldades, registrar reclamação no Procon ou Reclame Aqui",
+    },
+    {
+        "banco": "AGIBANK",
+        "titulo": "🏦 AGIBANK – Solicitação de Boleto / Quitação. _(Até o momento)_",
+        "conteudo": "• App ou site Agibank (consulta, negociação e quitação com possível desconto)\n• WhatsApp: 3004-3331\n• Central de Relacionamento:\n  • Capitais: 3004-2221\n  • Demais localidades: 0800-602-0022",
+    },
+    {
+        "banco": "BANCO J17",
+        "titulo": "🏦 BANCO J17 – Solicitação de Boleto de Quitação. _(Até o momento)_",
+        "conteudo": "• Solicitação realizada exclusivamente por e-mail\n• Enviar para: atendimentosiape@j17scd.com.br",
+    },
+    {
+        "banco": "BANCO MONBANK",
+        "titulo": "🏦 BANCO MONBANK – Solicitação de Informações ou Boleto. _(Até o momento)_",
+        "conteudo": "• SAC: 0800 700 0055\n• Atendimento: segunda a sexta, das 8h às 18h\n• Formulário online: Fale Conosco (site Monbank)\n• WhatsApp: (51) 3574-6945",
+    },
+    {
+        "banco": "BANCO PEAK",
+        "titulo": "🏦 BANCO PEAK – Solicitação de Informações / Fatura _(Até o momento)_",
+        "conteudo": "⚠️ Atendimento realizado somente por e-mail",
+    },
+    {
+        "banco": "BANCO DIGIMAIS",
+        "titulo": "🏦 BANCO DIGIMAIS",
+        "conteudo": "• WhatsApp: 11 4020-3300\n• Telefone: 0800 646 7600",
+    },
+]
+
 # ================= CSS (LEVE) =================
 st.markdown("""
 <style>
@@ -264,7 +318,6 @@ def prompt_contextual(c: dict) -> str:
     tipo = c.get("tipo_contrato", "")
     obs = c.get("observacoes", "")
 
-    # Direcionamento por status (sem prometer nada irreal)
     mapa = {
         "em análise": "Objetivo: confirmar dados e interesse, manter a conversa leve e avançar para o próximo passo.",
         "solicitar fatura": "Objetivo: pedir a fatura/documentos necessários de forma simples e objetiva para agilizar a simulação.",
@@ -274,7 +327,6 @@ def prompt_contextual(c: dict) -> str:
         "fechado": "Objetivo: parabenizar, confirmar que está encaminhado e deixar portas abertas para suporte.",
         "cancelado": "Objetivo: reabrir conversa de forma respeitosa e oferecer ajuda caso queira retomar no futuro."
     }
-
     direcao = mapa.get(status, "Objetivo: criar uma mensagem clara e persuasiva, adequada ao contexto do cliente.")
 
     return f"""
@@ -339,6 +391,60 @@ def carregar_usuarios():
 @st.cache_data(ttl=86400)
 def carregar_logs():
     return supabase.table("logs").select("*").order("id", desc=True).limit(200).execute().data
+
+# ======= RETIRAR FATURAS (INTERATIVO) =======
+def _default_faturas_map():
+    m = {}
+    for item in DEFAULT_RETIRAR_FATURAS:
+        m[item["banco"]] = {
+            "banco": item["banco"],
+            "titulo": item["titulo"],
+            "conteudo": item["conteudo"],
+            "updated_at": None,
+            "updated_by": None,
+        }
+    return m
+
+@st.cache_data(ttl=86400)
+def carregar_retirar_faturas():
+    """
+    Busca no Supabase a tabela 'retirar_faturas' (se existir).
+    Se não existir/der erro, retorna a base default (sem quebrar o app).
+    Esperado na tabela:
+      banco (texto único), titulo (texto), conteudo (texto), updated_at (timestamp opcional), updated_by (texto opcional)
+    """
+    base = _default_faturas_map()
+    try:
+        rows = supabase.table("retirar_faturas").select("*").execute().data or []
+        for r in rows:
+            banco = (r.get("banco") or "").strip()
+            if not banco:
+                continue
+            base[banco] = {
+                "banco": banco,
+                "titulo": r.get("titulo") or base.get(banco, {}).get("titulo") or f"🏦 {banco}",
+                "conteudo": r.get("conteudo") or "",
+                "updated_at": r.get("updated_at"),
+                "updated_by": r.get("updated_by"),
+            }
+        return base, True  # True = conseguiu ler do banco (ou pelo menos a tabela existe)
+    except Exception:
+        return base, False
+
+def salvar_retirar_faturas_item(banco: str, titulo: str, conteudo: str):
+    """
+    Tenta gravar no Supabase via upsert em 'retirar_faturas'.
+    Se tabela não existir, lança exceção e a UI mostra aviso (sem quebrar).
+    """
+    payload = {
+        "banco": banco,
+        "titulo": titulo,
+        "conteudo": conteudo,
+        "updated_at": datetime.now().isoformat(),
+        "updated_by": st.session_state.get("usuario"),
+    }
+    # on_conflict = banco (precisa ser unique na tabela)
+    supabase.table("retirar_faturas").upsert(payload, on_conflict="banco").execute()
 
 # ================= LOGIN =================
 def login():
@@ -408,10 +514,13 @@ if not st.session_state.get("logado"):
 # ================= SIDEBAR =================
 st.sidebar.image(LOGO_URL, use_container_width=True)
 st.sidebar.markdown("---")
+
+# ✅ Aba nova abaixo de "CRM": "Retirar Faturas"
 menu = st.sidebar.radio(
     "Menu",
-    ["CRM", "Usuários", "Logs"] if st.session_state.get("nivel") == "admin" else ["CRM"]
+    ["CRM", "Retirar Faturas", "Usuários", "Logs"] if st.session_state.get("nivel") == "admin" else ["CRM", "Retirar Faturas"]
 )
+
 if st.sidebar.button("🚪 Sair", use_container_width=True):
     registrar_log("Logout")
     st.session_state.clear()
@@ -514,7 +623,7 @@ if menu == "CRM":
         with f5:
             st.selectbox("Ordenar", ["Mais recente", "Status", "Nome"], key="f_order")
 
-        c_limpar1, c_limpar2 = st.columns([1, 6])
+        c_limpar1, _ = st.columns([1, 6])
         with c_limpar1:
             if st.button("🧹 Limpar", use_container_width=True):
                 st.session_state.f_status = "Todos"
@@ -599,7 +708,6 @@ if menu == "CRM":
         modal_excluir = None
 
     st.caption(f"📌 Exibindo **{len(filtrados)}** cliente(s) (após filtros)")
-
     st.divider()
 
     # ✅ 1 COLUNA
@@ -674,6 +782,102 @@ if menu == "CRM":
 
             if f"msg_{c['id']}" in st.session_state:
                 st.text_area("Mensagem IA (contextual)", st.session_state[f"msg_{c['id']}"], height=90)
+
+# ================= RETIRAR FATURAS =================
+if menu == "Retirar Faturas":
+    st.title("📄 Retirar Faturas")
+    st.markdown("""
+📌 **DOCUMENTAÇÃO NECESSÁRIA PARA SOLICITAÇÃO DE FATURAS / INFORMAÇÕES**
+
+Para dar andamento corretamente às análises e solicitações junto aos bancos, segue abaixo o que cada instituição exige 👇
+""")
+
+    faturas_map, conseguiu_ler_db = carregar_retirar_faturas()
+
+    # barra de ferramentas
+    t1, t2, t3 = st.columns([2.2, 1.2, 1.2])
+    with t1:
+        busca_banco = st.text_input("🔎 Buscar banco", placeholder="Ex: PAN, BMG, DIGIMAIS...")
+    with t2:
+        modo = st.selectbox("Visualização", ["Lista", "Selecionar banco"])
+    with t3:
+        if st.session_state.get("nivel") == "admin":
+            st.caption("✏️ Admin pode editar")
+        else:
+            st.caption("👀 Somente leitura")
+
+    bancos = sorted(list(faturas_map.keys()))
+    if busca_banco:
+        bb = busca_banco.strip().lower()
+        bancos = [b for b in bancos if bb in b.lower()]
+
+    st.divider()
+
+    def _render_item(item: dict):
+        banco = item["banco"]
+        titulo = item.get("titulo") or f"🏦 {banco}"
+        conteudo = item.get("conteudo") or ""
+        updated_at = item.get("updated_at")
+        updated_by = item.get("updated_by")
+
+        with st.expander(titulo, expanded=False):
+            if updated_at or updated_by:
+                linha = "🕒 "
+                if updated_at:
+                    linha += f"Última atualização: {updated_at}"
+                if updated_by:
+                    linha += f" • por: {updated_by}"
+                st.caption(linha)
+
+            if st.session_state.get("nivel") == "admin":
+                # edição interativa (persistente se tabela existir)
+                titulo_e = st.text_input("Título", value=titulo, key=f"fat_tit_{banco}")
+                conteudo_e = st.text_area("Informações (uma por linha / pode colar texto)", value=conteudo, height=220, key=f"fat_con_{banco}")
+
+                c1, c2, c3 = st.columns([1.1, 1.1, 4])
+                with c1:
+                    if st.button("💾 Salvar", key=f"fat_save_{banco}", use_container_width=True):
+                        try:
+                            salvar_retirar_faturas_item(banco=banco, titulo=titulo_e, conteudo=conteudo_e)
+                            registrar_log(f"Atualizou Retirar Faturas: {banco}")
+                            st.cache_data.clear()
+                            st.success("Salvo com sucesso ✅")
+                            st.rerun()
+                        except Exception:
+                            st.warning("⚠️ Não consegui salvar no Supabase (tabela 'retirar_faturas' pode não existir). O app continua funcionando com a base padrão.")
+                with c2:
+                    if st.button("↩️ Restaurar padrão", key=f"fat_reset_{banco}", use_container_width=True):
+                        padrao = _default_faturas_map().get(banco)
+                        if padrao:
+                            st.session_state[f"fat_tit_{banco}"] = padrao["titulo"]
+                            st.session_state[f"fat_con_{banco}"] = padrao["conteudo"]
+                            st.rerun()
+                        else:
+                            st.info("Não há padrão para este banco.")
+                with c3:
+                    st.caption("Dica: mantenha contatos, horários e documentos em linhas separadas para ficar mais legível.")
+
+                st.markdown("### Prévia")
+                st.markdown(conteudo_e.replace("\n", "  \n"))
+            else:
+                # somente leitura
+                st.markdown(conteudo.replace("\n", "  \n"))
+
+    if modo == "Selecionar banco":
+        if not bancos:
+            st.info("Nenhum banco encontrado.")
+        else:
+            sel = st.selectbox("Escolha o banco", bancos)
+            _render_item(faturas_map[sel])
+    else:
+        if not bancos:
+            st.info("Nenhum banco encontrado.")
+        else:
+            for b in bancos:
+                _render_item(faturas_map[b])
+
+    if st.session_state.get("nivel") == "admin" and not conseguiu_ler_db:
+        st.info("💡 Para deixar esta aba 100% persistente/editável para todos, crie uma tabela no Supabase chamada **retirar_faturas** com colunas: banco (único), titulo, conteudo, updated_at, updated_by. (O app já tenta salvar via upsert.)")
 
 # ================= USUÁRIOS =================
 if menu == "Usuários":
