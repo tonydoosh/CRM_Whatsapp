@@ -247,6 +247,61 @@ label{
   font-weight:700 !important;
 }
 
+<style>
+/* ==============================
+   REMOVER BORDAS PRETAS / FOCUS
+   ============================== */
+
+/* Inputs padrão */
+[data-baseweb="input"] > div{
+  background:#1f332c !important;
+  border:1px solid #3d5e52 !important;
+  border-radius:14px !important;
+  box-shadow:none !important;
+  outline:none !important;
+}
+
+/* Quando o input está em foco */
+[data-baseweb="input"] > div:focus-within{
+  border:1px solid #d4b15c !important;   /* dourado suave */
+  box-shadow:0 0 0 1px rgba(212,177,92,.35) !important;
+  outline:none !important;
+}
+
+/* Input de senha (ícone do olho incluso) */
+[data-baseweb="input"] svg{
+  color:#bfd1ca !important;
+}
+
+/* Remove outline global (tecla TAB / focus invisível) */
+*:focus{
+  outline:none !important;
+  box-shadow:none !important;
+}
+
+/* Textarea */
+[data-baseweb="textarea"] > div{
+  background:#1f332c !important;
+  border:1px solid #3d5e52 !important;
+  border-radius:14px !important;
+  box-shadow:none !important;
+}
+
+/* Selectbox */
+[data-baseweb="select"] > div{
+  background:#1f332c !important;
+  border:1px solid #3d5e52 !important;
+  border-radius:14px !important;
+  box-shadow:none !important;
+}
+
+/* Focus do select */
+[data-baseweb="select"] > div:focus-within{
+  border:1px solid #d4b15c !important;
+  box-shadow:0 0 0 1px rgba(212,177,92,.35) !important;
+}
+</style>
+
 /* botões */
 .stButton > button{
   background:linear-gradient(135deg,#d4b15c,#b18b3b) !important;
@@ -947,3 +1002,4 @@ if menu == "Logs":
         st.dataframe(pd.DataFrame(logs), use_container_width=True)
     else:
         st.info("Nenhum log registrado")
+
