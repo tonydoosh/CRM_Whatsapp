@@ -37,15 +37,6 @@ body, .stApp {
 }
 
 /* LOGIN */
-.login-box {
-    max-width:420px;
-    margin:auto;
-    padding:40px;
-    background:#1f332b;
-    border-radius:18px;
-    border:1px solid #3e665a;
-    box-shadow:0 0 25px rgba(0,0,0,.5);
-}
 
 /* CARDS */
 .card {
@@ -254,3 +245,4 @@ if menu == "Usuários":
 if menu == "Logs":
     st.title("📜 Logs")
     st.dataframe(pd.DataFrame(carregar_logs()), use_container_width=True)
+
