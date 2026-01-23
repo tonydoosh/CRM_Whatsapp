@@ -59,6 +59,33 @@ section[data-testid="stSidebar"]{
   margin:6px 0 10px 0;
 }
 
+/* ===== Resumo topo ===== */
+.kpi{
+  background:#1f332c;
+  border:1px solid #3d5e52;
+  border-radius:18px;
+  padding:14px 14px;
+  box-shadow:0 10px 24px rgba(0,0,0,.12);
+}
+.kpi .kpi-title{
+  color:#bfd1ca;
+  font-weight:800;
+  font-size:.88rem;
+  margin:0 0 4px 0;
+}
+.kpi .kpi-value{
+  color:#eaf2ef;
+  font-weight:900;
+  font-size:1.55rem;
+  margin:0;
+}
+.kpi .kpi-sub{
+  color:#bfd1ca;
+  font-size:.80rem;
+  margin:6px 0 0 0;
+  opacity:.9;
+}
+
 /* ===== Botão IA ===== */
 button[key^="ia_"]{
   background:linear-gradient(135deg,#d4b15c,#b18b3b) !important;
@@ -230,21 +257,56 @@ def gerar_link_whatsapp(t: str, m: str) -> str:
     t = "".join(filter(str.isdigit, t))
     return f"https://web.whatsapp.com/send?phone=55{t}&text={urllib.parse.quote(m)}"
 
+def prompt_contextual(c: dict) -> str:
+    status = (c.get("status") or "").lower().strip()
+    nome = c.get("nome", "")
+    banco = c.get("banco", "")
+    tipo = c.get("tipo_contrato", "")
+    obs = c.get("observacoes", "")
+
+    # Direcionamento por status (sem prometer nada irreal)
+    mapa = {
+        "em análise": "Objetivo: confirmar dados e interesse, manter a conversa leve e avançar para o próximo passo.",
+        "solicitar fatura": "Objetivo: pedir a fatura/documentos necessários de forma simples e objetiva para agilizar a simulação.",
+        "boleto de quitação": "Objetivo: reforçar urgência e próximos passos para emitir/validar boleto de quitação com clareza.",
+        "aguardando averbação": "Objetivo: tranquilizar, explicar que está em andamento e alinhar prazos sem promessas.",
+        "aguardando liquidação": "Objetivo: alinhar expectativa de liberação e confirmar dados finais, mantendo confiança.",
+        "fechado": "Objetivo: parabenizar, confirmar que está encaminhado e deixar portas abertas para suporte.",
+        "cancelado": "Objetivo: reabrir conversa de forma respeitosa e oferecer ajuda caso queira retomar no futuro."
+    }
+
+    direcao = mapa.get(status, "Objetivo: criar uma mensagem clara e persuasiva, adequada ao contexto do cliente.")
+
+    return f"""
+Você é um consultor financeiro especialista em atendimento via WhatsApp.
+Gere UMA mensagem curta, humana, persuasiva e diplomática, sem ser grosseiro e sem prometer resultados.
+
+{direcao}
+
+Regras:
+- Texto em PT-BR
+- No máximo 6 linhas
+- Pode usar 1 ou 2 emojis no máximo
+- Termine com uma pergunta de avanço (CTA)
+- Se faltar informação, peça de forma simples
+
+Dados do cliente:
+Nome: {nome}
+Banco: {banco}
+Produto: {tipo}
+Status atual: {status}
+Observações: {obs}
+""".strip()
+
 def gerar_mensagem_ia(c: dict) -> str:
     payload = {
         "model": "meta-llama/llama-4-scout-17b-16e-instruct",
         "messages": [
             {"role": "system", "content": "Consultor financeiro especialista"},
-            {"role": "user", "content": f"""
-Cliente:{c.get('nome')}
-Produto:{c.get('tipo_contrato')}
-Banco:{c.get('banco')}
-Status:{c.get('status')}
-Obs:{c.get('observacoes')}
-Gere mensagem curta para WhatsApp."""}
+            {"role": "user", "content": prompt_contextual(c)}
         ],
-        "temperature": 0.4,
-        "max_tokens": 120
+        "temperature": 0.35,
+        "max_tokens": 140
     }
     r = requests.post(
         GROQ_URL,
@@ -386,7 +448,51 @@ if menu == "CRM":
 
     clientes = carregar_clientes(st.session_state.get("nivel"), st.session_state.get("usuario")) or []
 
-    # ====== FILTROS + BUSCA + ORDENAÇÃO (EM CIMA, CLEAN) ======
+    # ====== RESUMOS NO TOPO (KPIs) ======
+    total = len(clientes)
+    cont_status = {s: 0 for s in STATUS_OPCOES}
+    for c in clientes:
+        stt = c.get("status")
+        if stt in cont_status:
+            cont_status[stt] += 1
+
+    k1, k2, k3, k4 = st.columns(4)
+    with k1:
+        st.markdown(f"""
+        <div class="kpi">
+          <div class="kpi-title">Total</div>
+          <div class="kpi-value">{total}</div>
+          <div class="kpi-sub">clientes na base</div>
+        </div>
+        """, unsafe_allow_html=True)
+    with k2:
+        st.markdown(f"""
+        <div class="kpi">
+          <div class="kpi-title">Em análise</div>
+          <div class="kpi-value">{cont_status.get("em análise",0)}</div>
+          <div class="kpi-sub">primeiro contato</div>
+        </div>
+        """, unsafe_allow_html=True)
+    with k3:
+        st.markdown(f"""
+        <div class="kpi">
+          <div class="kpi-title">Aguardando</div>
+          <div class="kpi-value">{cont_status.get("aguardando averbação",0) + cont_status.get("aguardando liquidação",0)}</div>
+          <div class="kpi-sub">andamento</div>
+        </div>
+        """, unsafe_allow_html=True)
+    with k4:
+        st.markdown(f"""
+        <div class="kpi">
+          <div class="kpi-title">Fechados</div>
+          <div class="kpi-value">{cont_status.get("fechado",0)}</div>
+          <div class="kpi-sub">concluídos</div>
+        </div>
+        """, unsafe_allow_html=True)
+
+    st.markdown("<div style='height:10px'></div>", unsafe_allow_html=True)
+
+    # ====== FILTROS + BUSCA + ORDENAÇÃO ======
     bancos_unicos = sorted({(c.get("banco") or "").strip() for c in clientes if (c.get("banco") or "").strip()})
     tipos_unicos = sorted({(c.get("tipo_contrato") or "").strip() for c in clientes if (c.get("tipo_contrato") or "").strip()})
 
@@ -394,8 +500,6 @@ if menu == "CRM":
         f1, f2, f3, f4, f5 = st.columns([2.2, 1.2, 1.2, 1.2, 1.2])
 
         with f1:
-            # Streamlit já evita “quebrar” com rerun por char (geralmente aplica ao pressionar Enter),
-            # então fica um “debounce leve” natural sem complexidade.
             st.text_input("🔎 Buscar (nome/telefone)", key="search_raw", placeholder="Ex: Ana / 98412...")
 
         with f2:
@@ -449,7 +553,6 @@ if menu == "CRM":
     status_rank = {s: i for i, s in enumerate(STATUS_OPCOES)}
 
     def _key_recente(c: dict):
-        # tenta campos comuns; se não existir, usa id como fallback
         for k in ("created_at", "data_cadastro", "created", "dt_cadastro"):
             v = c.get(k)
             if v:
@@ -460,10 +563,10 @@ if menu == "CRM":
         filtrados.sort(key=lambda x: (x.get("nome") or "").lower())
     elif st.session_state.f_order == "Status":
         filtrados.sort(key=lambda x: (status_rank.get(x.get("status"), 999), (x.get("nome") or "").lower()))
-    else:  # Mais recente
+    else:
         filtrados.sort(key=_key_recente, reverse=True)
 
-    # ====== MODAL EXCLUIR (ELEGANTE) ======
+    # ====== MODAL EXCLUIR ======
     def abrir_modal_excluir(c: dict):
         st.session_state.delete_cliente = {
             "id": c.get("id"),
@@ -493,9 +596,9 @@ if menu == "CRM":
                     st.session_state.delete_cliente = None
                     st.rerun()
     else:
-        modal_excluir = None  # fallback abaixo (warning), caso seu Streamlit seja antigo
+        modal_excluir = None
 
-    st.caption(f"📌 Exibindo **{len(filtrados)}** cliente(s)")
+    st.caption(f"📌 Exibindo **{len(filtrados)}** cliente(s) (após filtros)")
 
     st.divider()
 
@@ -531,10 +634,8 @@ if menu == "CRM":
                 if modal_excluir:
                     modal_excluir()
                 else:
-                    # fallback elegante quando não existe st.dialog
                     st.session_state.confirm_delete_id = c["id"]
 
-            # fallback (Streamlit antigo): confirmação inline
             if (not hasattr(st, "dialog")) and st.session_state.confirm_delete_id == c["id"]:
                 st.warning("Tem certeza que deseja excluir este cliente? Essa ação não pode ser desfeita.")
                 d1, d2 = st.columns(2)
@@ -544,101 +645,4 @@ if menu == "CRM":
                     st.session_state.confirm_delete_id = None
                     st.cache_data.clear()
                     st.rerun()
-                if d2.button("❌ Cancelar", key=f"cancel_del_cliente_{c['id']}", use_container_width=True):
-                    st.session_state.confirm_delete_id = None
-                    st.rerun()
-
-            if st.session_state.get("edit_id") == c["id"]:
-                with st.form(f"edit_form_{c['id']}"):
-                    st.markdown("**Editar cliente**")
-                    banco_e = st.text_input("Banco", c.get("banco", ""))
-                    tipo_e = st.text_input("Tipo", c.get("tipo_contrato", ""))
-                    status_e = st.selectbox(
-                        "Status",
-                        STATUS_OPCOES,
-                        index=STATUS_OPCOES.index(c.get("status")) if c.get("status") in STATUS_OPCOES else 0
-                    )
-                    obs_e = st.text_area("Observações", c.get("observacoes", ""))
-                    if st.form_submit_button("💾 Atualizar", use_container_width=True):
-                        supabase.table("clientes").update({
-                            "banco": banco_e,
-                            "tipo_contrato": tipo_e,
-                            "status": status_e,
-                            "observacoes": obs_e
-                        }).eq("id", c["id"]).execute()
-                        registrar_log(f"Atualizou cliente {c.get('nome', '')}")
-                        st.session_state.pop("edit_id", None)
-                        st.cache_data.clear()
-                        st.rerun()
-
-            if f"msg_{c['id']}" in st.session_state:
-                st.text_area("Mensagem IA", st.session_state[f"msg_{c['id']}"], height=90)
-
-# ================= USUÁRIOS =================
-if menu == "Usuários":
-    st.title("👤 Operadores")
-
-    with st.form("add_user"):
-        u = st.text_input("Usuário")
-        s = st.text_input("Senha", type="password")
-        n = st.selectbox("Nível", ["operador", "admin"])
-        ativo = st.selectbox("Ativo", [True, False], index=0)
-        if st.form_submit_button("Adicionar", use_container_width=True):
-            supabase.table("usuarios").insert({
-                "usuario": u,
-                "senha": gerar_hash(s),
-                "nivel": n,
-                "ativo": ativo
-            }).execute()
-            registrar_log(f"Criou usuário {u}")
-            st.cache_data.clear()
-            st.rerun()
-
-    st.divider()
-
-    for u in carregar_usuarios():
-        with st.expander(f"{u.get('usuario','')} | {u.get('nivel','')} | {'Ativo' if u.get('ativo') else 'Inativo'}"):
-            col1, col2, col3 = st.columns(3)
-
-            with col1:
-                usuario_e = st.text_input("Usuário", u.get("usuario", ""), key=f"user_{u['id']}")
-                nivel_e = st.selectbox(
-                    "Nível",
-                    ["operador", "admin"],
-                    index=0 if u.get("nivel") == "operador" else 1,
-                    key=f"nivel_{u['id']}"
-                )
-
-            with col2:
-                ativo_e = st.selectbox(
-                    "Ativo",
-                    [True, False],
-                    index=0 if u.get("ativo") else 1,
-                    key=f"ativo_{u['id']}"
-                )
-                nova_senha = st.text_input("Nova senha (opcional)", type="password", key=f"senha_{u['id']}")
-
-            with col3:
-                if st.button("💾 Salvar", key=f"save_{u['id']}", use_container_width=True):
-                    d = {"usuario": usuario_e, "nivel": nivel_e, "ativo": ativo_e}
-                    if nova_senha:
-                        d["senha"] = gerar_hash(nova_senha)
-                    supabase.table("usuarios").update(d).eq("id", u["id"]).execute()
-                    registrar_log(f"Editou usuário {usuario_e}")
-                    st.cache_data.clear()
-                    st.rerun()
-
-                if st.button("🗑️ Excluir", key=f"del_{u['id']}", use_container_width=True):
-                    supabase.table("usuarios").delete().eq("id", u["id"]).execute()
-                    registrar_log(f"Excluiu usuário {u.get('usuario','')}")
-                    st.cache_data.clear()
-                    st.rerun()
-
-# ================= LOGS =================
-if menu == "Logs":
-    st.title("📜 Logs")
-    logs = carregar_logs()
-    if logs:
-        st.dataframe(pd.DataFrame(logs), use_container_width=True)
-    else:
-        st.info("Nenhum log registrado")
+                if d2.button("❌ Cancelar", key=f"cancel_del_cliente_{c['id']}", use_container_w_
