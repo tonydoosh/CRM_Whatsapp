@@ -199,4 +199,5 @@ if menu == "CRM":
                     st.write(f"Banco: {row.get('banco','')}")
                     st.write(f"Tipo: {row.get('tipo_contrato','')}")
                     st.write(f"Status: {row.get('status','')}")
-                    st.write(f"Obs: {row.get('obs
+                    st.write(f"Obs: {row.get('observacoes','')}")
+
