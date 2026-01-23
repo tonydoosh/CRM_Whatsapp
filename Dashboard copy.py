@@ -72,96 +72,87 @@ button[key^="ia_"]{
   100%{box-shadow:0 0 0 0 rgba(212,177,92,0);}
 }
 
-/* ===== Login (barras atrás + float) ===== */
+/* ===== Login (barras centralizadas atrás da logo + float) ===== */
 .login-wrap{
-  max-width: 520px;
+  max-width: 420px;
   margin: 7.2vh auto 0 auto;
 }
 .login-box{
   background:#182a24;
   border:1px solid #3d5e52;
   border-radius:22px;
-  padding:22px 22px 20px 22px;
+  padding:24px 22px 20px 22px;
   box-shadow:0 18px 44px rgba(0,0,0,.35);
 }
 
-/* Hero com barras decorativas */
+/* Container só do “hero” (SEM retângulo grande) */
 .login-hero{
   position:relative;
   display:flex;
   justify-content:center;
   align-items:center;
-  padding: 22px 0 10px 0;
-  margin-bottom: 6px;
-  overflow:hidden;
-  border-radius:18px;
-  background: rgba(0,0,0,.05);
-  border: 1px solid rgba(61,94,82,.55);
+  padding: 18px 0 10px 0;
+  margin-bottom: 8px;
 }
 
-/* barras (camadas) */
-.hero-bar{
+/* Wrapper para logo + barras (centralizado) */
+.hero-center{
+  position:relative;
+  width: 260px;     /* controla a área do desenho atrás da logo */
+  height: 140px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+}
+
+/* barras individuais (pílulas) atrás da logo */
+.hero-pill{
   position:absolute;
   left:50%;
-  transform:translateX(-50%);
-  width: 120%;
-  height: 44px;
-  border-radius: 999px;
-  background: rgba(31,51,44,.85);
-  border: 1px solid rgba(61,94,82,.7);
-  z-index: 0;
-  filter: blur(.0px);
+  transform: translateX(-50%);
+  height: 30px;
+  border-radius:999px;
+  background: rgba(31,51,44,.92);
+  border: 1px solid rgba(61,94,82,.85);
+  z-index:0;
+  filter: none;
   opacity: .95;
-  animation: floaty 4.6s ease-in-out infinite;
 }
-.hero-bar.b1{ top: 10px; width: 112%; height: 40px; opacity:.88; }
-.hero-bar.b2{ top: 34px; width: 135%; height: 50px; opacity:.34; }
-.hero-bar.b3{ top: 68px; width: 125%; height: 44px; opacity:.22; }
-.hero-bar.b4{ top: -14px; width: 92%;  height: 34px; opacity:.55; }
-.hero-bar.b5{ top: 92px; width: 98%;  height: 36px; opacity:.18; }
 
-/* detalhe de brilho dourado bem suave */
+/* variações de largura/posição (sem “placa” grande) */
+.hero-pill.p1{ top: 6px;   width: 240px; opacity:.55; }
+.hero-pill.p2{ top: 30px;  width: 300px; opacity:.18; }
+.hero-pill.p3{ top: 54px;  width: 260px; opacity:.30; }
+.hero-pill.p4{ top: 78px;  width: 320px; opacity:.12; }
+.hero-pill.p5{ top: 102px; width: 220px; opacity:.22; }
+
+/* leve brilho dourado central (bem sutil) */
 .hero-glow{
   position:absolute;
-  width: 520px;
-  height: 220px;
-  border-radius: 999px;
-  background: radial-gradient(circle at 50% 50%, rgba(212,177,92,.18), rgba(212,177,92,0) 70%);
-  z-index: 0;
-  animation: glow 6.8s ease-in-out infinite;
-}
-@keyframes glow{
-  0%,100%{ transform: translateY(0px); opacity:.30; }
-  50%{ transform: translateY(-8px); opacity:.42; }
+  inset:-30px -60px -30px -60px;
+  border-radius:999px;
+  background: radial-gradient(circle at 50% 45%, rgba(212,177,92,.14), rgba(212,177,92,0) 65%);
+  z-index:0;
+  opacity:.55;
 }
 
-/* logo */
+/* animação float (barra + logo) */
+@keyframes floaty{
+  0%,100% { transform: translateY(0px); }
+  50%     { transform: translateY(-6px); }
+}
+.float-group{
+  animation: floaty 4.8s ease-in-out infinite;
+}
+
+/* logo por cima das barras */
 .login-logo{
   position:relative;
   z-index:2;
-  width: 240px;
+  width: 210px;
   border-radius: 16px;
   border:1px solid #3d5e52;
   background:#1f332c;
-  animation: floaty 4.6s ease-in-out infinite;
-  animation-delay: .18s;
-}
-
-@keyframes floaty{
-  0%, 100% { transform: translate(-50%, 0px); }
-  50% { transform: translate(-50%, -7px); }
-}
-
-/* Para logo, não queremos -50% no translate. Ajuste com wrapper */
-.logo-wrap{
-  position:relative;
-  z-index:2;
-  animation: floatyLogo 4.6s ease-in-out infinite;
-  animation-delay: .18s;
-}
-@keyframes floatyLogo{
-  0%, 100% { transform: translateY(0px); }
-  50% { transform: translateY(-7px); }
 }
 
 /* inputs */
@@ -176,7 +167,7 @@ label{
   font-weight:700 !important;
 }
 
-/* Botões */
+/* botões */
 .stButton > button{
   background:linear-gradient(135deg,#d4b15c,#b18b3b) !important;
   color:#263d33 !important;
@@ -200,7 +191,7 @@ label{
   color:#d4b15c;
   font-weight:900;
   font-size: 1.10rem;
-  margin: 10px 0 6px 0;
+  margin: 6px 0 6px 0;
 }
 .login-sub{
   text-align:center;
@@ -285,20 +276,20 @@ def carregar_usuarios():
 def carregar_logs():
     return supabase.table("logs").select("*").order("id", desc=True).limit(200).execute().data
 
-# ================= LOGIN (barras decorativas + float) =================
+# ================= LOGIN (barras centralizadas atrás + float) =================
 def login():
     st.markdown('<div class="login-wrap"><div class="login-box">', unsafe_allow_html=True)
 
     st.markdown(
         f"""
         <div class="login-hero">
-          <div class="hero-glow"></div>
-          <div class="hero-bar b4"></div>
-          <div class="hero-bar b1"></div>
-          <div class="hero-bar b2"></div>
-          <div class="hero-bar b3"></div>
-          <div class="hero-bar b5"></div>
-          <div class="logo-wrap">
+          <div class="hero-center float-group">
+            <div class="hero-glow"></div>
+            <div class="hero-pill p1"></div>
+            <div class="hero-pill p2"></div>
+            <div class="hero-pill p3"></div>
+            <div class="hero-pill p4"></div>
+            <div class="hero-pill p5"></div>
             <img class="login-logo" src="{LOGO_URL}">
           </div>
         </div>
