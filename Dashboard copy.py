@@ -98,7 +98,7 @@ button[key^="ia_"]{
 /* Wrapper para logo + barras (centralizado) */
 .hero-center{
   position:relative;
-  width: 260px;     /* controla a área do desenho atrás da logo */
+  width: 260px;
   height: 140px;
   display:flex;
   align-items:center;
@@ -115,18 +115,17 @@ button[key^="ia_"]{
   background: rgba(31,51,44,.92);
   border: 1px solid rgba(61,94,82,.85);
   z-index:0;
-  filter: none;
   opacity: .95;
 }
 
-/* variações de largura/posição (sem “placa” grande) */
+/* variações de largura/posição */
 .hero-pill.p1{ top: 6px;   width: 240px; opacity:.55; }
 .hero-pill.p2{ top: 30px;  width: 300px; opacity:.18; }
 .hero-pill.p3{ top: 54px;  width: 260px; opacity:.30; }
 .hero-pill.p4{ top: 78px;  width: 320px; opacity:.12; }
 .hero-pill.p5{ top: 102px; width: 220px; opacity:.22; }
 
-/* leve brilho dourado central (bem sutil) */
+/* leve brilho dourado */
 .hero-glow{
   position:absolute;
   inset:-30px -60px -30px -60px;
@@ -136,7 +135,7 @@ button[key^="ia_"]{
   opacity:.55;
 }
 
-/* animação float (barra + logo) */
+/* animação float */
 @keyframes floaty{
   0%,100% { transform: translateY(0px); }
   50%     { transform: translateY(-6px); }
@@ -279,7 +278,7 @@ def carregar_usuarios():
 def carregar_logs():
     return supabase.table("logs").select("*").order("id", desc=True).limit(200).execute().data
 
-# ================= LOGIN (barras centralizadas atrás + float) =================
+# ================= LOGIN =================
 def login():
     st.markdown('<div class="login-wrap"><div class="login-box">', unsafe_allow_html=True)
 
@@ -323,6 +322,22 @@ if "logado" not in st.session_state:
 
 if "confirm_delete_id" not in st.session_state:
     st.session_state.confirm_delete_id = None
+
+# filtros/pesquisa/ordenação
+if "f_status" not in st.session_state:
+    st.session_state.f_status = "Todos"
+if "f_banco" not in st.session_state:
+    st.session_state.f_banco = "Todos"
+if "f_tipo" not in st.session_state:
+    st.session_state.f_tipo = "Todos"
+if "f_order" not in st.session_state:
+    st.session_state.f_order = "Mais recente"
+if "search_raw" not in st.session_state:
+    st.session_state.search_raw = ""
+
+# modal excluir
+if "delete_cliente" not in st.session_state:
+    st.session_state.delete_cliente = None
 
 if not st.session_state.get("logado"):
     login()
@@ -369,12 +384,125 @@ if menu == "CRM":
 
     st.divider()
 
-    clientes = carregar_clientes(st.session_state.get("nivel"), st.session_state.get("usuario"))
+    clientes = carregar_clientes(st.session_state.get("nivel"), st.session_state.get("usuario")) or []
 
-    # ✅ 1 COLUNA (em vez de 2)
+    # ====== FILTROS + BUSCA + ORDENAÇÃO (EM CIMA, CLEAN) ======
+    bancos_unicos = sorted({(c.get("banco") or "").strip() for c in clientes if (c.get("banco") or "").strip()})
+    tipos_unicos = sorted({(c.get("tipo_contrato") or "").strip() for c in clientes if (c.get("tipo_contrato") or "").strip()})
+
+    with st.container():
+        f1, f2, f3, f4, f5 = st.columns([2.2, 1.2, 1.2, 1.2, 1.2])
+
+        with f1:
+            # Streamlit já evita “quebrar” com rerun por char (geralmente aplica ao pressionar Enter),
+            # então fica um “debounce leve” natural sem complexidade.
+            st.text_input("🔎 Buscar (nome/telefone)", key="search_raw", placeholder="Ex: Ana / 98412...")
+
+        with f2:
+            st.selectbox("Status", ["Todos"] + STATUS_OPCOES, key="f_status")
+
+        with f3:
+            st.selectbox("Banco", ["Todos"] + bancos_unicos, key="f_banco")
+
+        with f4:
+            st.selectbox("Tipo", ["Todos"] + tipos_unicos, key="f_tipo")
+
+        with f5:
+            st.selectbox("Ordenar", ["Mais recente", "Status", "Nome"], key="f_order")
+
+        c_limpar1, c_limpar2 = st.columns([1, 6])
+        with c_limpar1:
+            if st.button("🧹 Limpar", use_container_width=True):
+                st.session_state.f_status = "Todos"
+                st.session_state.f_banco = "Todos"
+                st.session_state.f_tipo = "Todos"
+                st.session_state.f_order = "Mais recente"
+                st.session_state.search_raw = ""
+                st.rerun()
+
+    # ====== APLICA FILTROS ======
+    q = (st.session_state.search_raw or "").strip().lower()
+
+    def _match_busca(c: dict) -> bool:
+        if not q:
+            return True
+        nome_ = (c.get("nome") or "").lower()
+        tel_ = "".join(filter(str.isdigit, (c.get("telefone") or "")))
+        q_digits = "".join(filter(str.isdigit, q))
+        ok_nome = q in nome_
+        ok_tel = (q_digits in tel_) if q_digits else False
+        return ok_nome or ok_tel
+
+    filtrados = []
+    for c in clientes:
+        if st.session_state.f_status != "Todos" and (c.get("status") or "") != st.session_state.f_status:
+            continue
+        if st.session_state.f_banco != "Todos" and (c.get("banco") or "") != st.session_state.f_banco:
+            continue
+        if st.session_state.f_tipo != "Todos" and (c.get("tipo_contrato") or "") != st.session_state.f_tipo:
+            continue
+        if not _match_busca(c):
+            continue
+        filtrados.append(c)
+
+    # ====== ORDENAÇÃO ======
+    status_rank = {s: i for i, s in enumerate(STATUS_OPCOES)}
+
+    def _key_recente(c: dict):
+        # tenta campos comuns; se não existir, usa id como fallback
+        for k in ("created_at", "data_cadastro", "created", "dt_cadastro"):
+            v = c.get(k)
+            if v:
+                return str(v)
+        return str(c.get("id", ""))
+
+    if st.session_state.f_order == "Nome":
+        filtrados.sort(key=lambda x: (x.get("nome") or "").lower())
+    elif st.session_state.f_order == "Status":
+        filtrados.sort(key=lambda x: (status_rank.get(x.get("status"), 999), (x.get("nome") or "").lower()))
+    else:  # Mais recente
+        filtrados.sort(key=_key_recente, reverse=True)
+
+    # ====== MODAL EXCLUIR (ELEGANTE) ======
+    def abrir_modal_excluir(c: dict):
+        st.session_state.delete_cliente = {
+            "id": c.get("id"),
+            "nome": c.get("nome", ""),
+            "telefone": c.get("telefone", "")
+        }
+
+    if hasattr(st, "dialog"):
+        @st.dialog("🗑️ Excluir cliente")
+        def modal_excluir():
+            cdel = st.session_state.get("delete_cliente") or {}
+            st.markdown("### Confirmar exclusão")
+            st.write("Você está prestes a excluir este cliente. Essa ação não pode ser desfeita.")
+            st.markdown(f"**Cliente:** {cdel.get('nome','')}")
+            st.markdown(f"**Telefone:** {cdel.get('telefone','')}")
+
+            a1, a2 = st.columns(2)
+            with a1:
+                if st.button("✅ Excluir agora", use_container_width=True):
+                    excluir_cliente(cdel.get("id"))
+                    registrar_log(f"Excluiu cliente {cdel.get('nome','')}")
+                    st.session_state.delete_cliente = None
+                    st.cache_data.clear()
+                    st.rerun()
+            with a2:
+                if st.button("❌ Cancelar", use_container_width=True):
+                    st.session_state.delete_cliente = None
+                    st.rerun()
+    else:
+        modal_excluir = None  # fallback abaixo (warning), caso seu Streamlit seja antigo
+
+    st.caption(f"📌 Exibindo **{len(filtrados)}** cliente(s)")
+
+    st.divider()
+
+    # ✅ 1 COLUNA
     cols = st.columns(1)
 
-    for i, c in enumerate(clientes):
+    for i, c in enumerate(filtrados):
         with cols[0]:
             st.markdown(f"""
             <div class="card">
@@ -386,7 +514,6 @@ if menu == "CRM":
             </div>
             """, unsafe_allow_html=True)
 
-            # ✅ Botões: + Excluir
             b1, b2, b3, b4 = st.columns(4)
 
             if b1.button("🤖 Gerar IA", key=f"ia_{c['id']}"):
@@ -400,20 +527,23 @@ if menu == "CRM":
                 st.link_button("Abrir WhatsApp", gerar_link_whatsapp(c.get("telefone", ""), msg), use_container_width=True)
 
             if b4.button("🗑️ Excluir", key=f"del_cliente_{c['id']}"):
-                st.session_state.confirm_delete_id = c["id"]
+                abrir_modal_excluir(c)
+                if modal_excluir:
+                    modal_excluir()
+                else:
+                    # fallback elegante quando não existe st.dialog
+                    st.session_state.confirm_delete_id = c["id"]
 
-            # ✅ Confirmação de exclusão
-            if st.session_state.confirm_delete_id == c["id"]:
+            # fallback (Streamlit antigo): confirmação inline
+            if (not hasattr(st, "dialog")) and st.session_state.confirm_delete_id == c["id"]:
                 st.warning("Tem certeza que deseja excluir este cliente? Essa ação não pode ser desfeita.")
                 d1, d2 = st.columns(2)
-
                 if d1.button("✅ Confirmar exclusão", key=f"conf_del_cliente_{c['id']}", use_container_width=True):
                     excluir_cliente(c["id"])
                     registrar_log(f"Excluiu cliente {c.get('nome','')}")
                     st.session_state.confirm_delete_id = None
                     st.cache_data.clear()
                     st.rerun()
-
                 if d2.button("❌ Cancelar", key=f"cancel_del_cliente_{c['id']}", use_container_width=True):
                     st.session_state.confirm_delete_id = None
                     st.rerun()
