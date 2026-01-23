@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 import streamlit as st
 import pandas as pd
-from datetime import datetime, timedelta
+from datetime import datetime
 from supabase import create_client
 import hashlib
 import requests
@@ -16,6 +16,16 @@ GROQ_URL = "https://api.groq.com/openai/v1/chat/completions"
 supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
 
 st.set_page_config(page_title="CRM WhatsApp", layout="wide")
+
+STATUS_OPCOES = [
+    "em análise",
+    "solicitar fatura",
+    "boleto de quitação",
+    "aguardando averbação",
+    "aguardando liquidação",
+    "fechado",
+    "cancelado"
+]
 
 # ---------- FUNÇÕES ----------
 def gerar_hash(senha: str) -> str:
@@ -39,6 +49,32 @@ def gerar_link_whatsapp(telefone: str, mensagem: str) -> str:
     texto = urllib.parse.quote(mensagem)
     return f"https://web.whatsapp.com/send?phone=55{telefone}&text={texto}"
 
+def gerar_mensagem_ia(cliente: dict) -> str:
+    prompt = f"""
+Cliente: {cliente['nome']}
+Produto: {cliente.get('tipo_contrato')}
+Banco: {cliente.get('banco')}
+Status: {cliente.get('status')}
+Observações: {cliente.get('observacoes')}
+
+Gere uma mensagem profissional, curta e objetiva para WhatsApp.
+"""
+    payload = {
+        "model": "meta-llama/llama-4-scout-17b-16e-instruct",
+        "messages": [
+            {"role": "system", "content": "Consultor financeiro especialista em WhatsApp"},
+            {"role": "user", "content": prompt}
+        ],
+        "temperature": 0.4,
+        "max_tokens": 150
+    }
+    headers = {
+        "Authorization": f"Bearer {GROQ_API_KEY}",
+        "Content-Type": "application/json"
+    }
+    r = requests.post(GROQ_URL, json=payload, headers=headers, timeout=30)
+    return r.json()["choices"][0]["message"]["content"]
+
 @st.cache_data(ttl=60)
 def carregar_clientes(nivel, usuario):
     if nivel == "admin":
@@ -61,32 +97,20 @@ def login():
 
     if st.button("Entrar", use_container_width=True):
         res = supabase.table("usuarios").select("*").eq("usuario", usuario).execute().data
-        if not res:
+        if not res or not verificar_senha(senha, res[0]["senha"]) or not res[0]["ativo"]:
             st.error("Usuário ou senha inválidos")
             return
-
-        u = res[0]
-        if not u["ativo"]:
-            st.error("Usuário bloqueado")
-            return
-
-        if verificar_senha(senha, u["senha"]):
-            st.session_state["logado"] = True
-            st.session_state["usuario"] = usuario
-            st.session_state["nivel"] = u["nivel"]
-            registrar_log("Login")
-            st.rerun()
-        else:
-            st.error("Usuário ou senha inválidos")
+        st.session_state.update({
+            "logado": True,
+            "usuario": usuario,
+            "nivel": res[0]["nivel"]
+        })
+        registrar_log("Login")
+        st.rerun()
 
 # ---------- SESSÃO ----------
 if "logado" not in st.session_state:
     st.session_state["logado"] = False
-if "usuario" not in st.session_state:
-    st.session_state["usuario"] = None
-if "nivel" not in st.session_state:
-    st.session_state["nivel"] = None
-
 if not st.session_state["logado"]:
     login()
     st.stop()
@@ -109,98 +133,73 @@ if menu == "CRM":
     st.title("📲 CRM de Clientes – WhatsApp")
 
     clientes = carregar_clientes(st.session_state["nivel"], st.session_state["usuario"])
-    df_clientes = pd.DataFrame(clientes) if clientes else pd.DataFrame()
-
-    st.subheader("📊 Visão Geral")
-    if not df_clientes.empty:
-        c1, c2, c3, c4 = st.columns(4)
-        c1.metric("👥 Total", len(df_clientes))
-        c2.metric("⏳ Em análise", len(df_clientes[df_clientes["status"] == "em análise"]))
-        c3.metric(
-            "📎 Aguardando",
-            len(df_clientes[df_clientes["status"].isin(
-                ["aguardando averbação", "aguardando liquidação"]
-            )])
-        )
-        c4.metric("✅ Fechados", len(df_clientes[df_clientes["status"] == "fechado"]))
-
-    st.divider()
+    df = pd.DataFrame(clientes) if clientes else pd.DataFrame()
 
     with st.form("form_add"):
         st.subheader("➕ Adicionar Cliente")
         col1, col2 = st.columns(2)
-
         with col1:
             nome = st.text_input("Nome *")
             telefone = st.text_input("Telefone *")
             banco = st.text_input("Banco")
-
         with col2:
-            tipo = st.selectbox(
-                "Tipo *",
-                ["cartão", "consignado", "empréstimo", "saque", "benefício", "crédito"]
-            )
-            status = st.selectbox(
-                "Status *",
-                ["em análise", "aguardando averbação", "aguardando liquidação", "fechado", "cancelado"]
-            )
+            tipo = st.selectbox("Tipo *", ["cartão", "consignado", "empréstimo", "saque", "benefício", "crédito"])
+            status = st.selectbox("Status *", STATUS_OPCOES)
             obs = st.text_area("Observações")
-
         if st.form_submit_button("Salvar", use_container_width=True):
-            if not nome or not telefone:
-                st.error("Preencha os campos obrigatórios")
-            else:
-                supabase.table("clientes").insert({
-                    "nome": nome,
-                    "telefone": telefone,
-                    "banco": banco,
-                    "tipo_contrato": tipo,
-                    "status": status,
-                    "observacoes": obs,
-                    "usuario": st.session_state["usuario"]
-                }).execute()
+            supabase.table("clientes").insert({
+                "nome": nome,
+                "telefone": telefone,
+                "banco": banco,
+                "tipo_contrato": tipo,
+                "status": status,
+                "observacoes": obs,
+                "usuario": st.session_state["usuario"]
+            }).execute()
+            registrar_log(f"Cadastrou cliente {nome}")
+            st.cache_data.clear()
+            st.rerun()
 
-                registrar_log(f"Cadastrou cliente {nome}")
-                st.cache_data.clear()
-                st.rerun()
-
-    st.divider()
-
-    if not df_clientes.empty:
+    if not df.empty:
         st.subheader("📋 Clientes")
-
-        for _, row in df_clientes.iterrows():
+        for _, row in df.iterrows():
             with st.expander(f"{row['nome']} - {row['telefone']}"):
-                col1, col2 = st.columns([2, 1])
+                nome_e = st.text_input("Nome", row["nome"], key=f"n{row['id']}")
+                tel_e = st.text_input("Telefone", row["telefone"], key=f"t{row['id']}")
+                banco_e = st.text_input("Banco", row.get("banco",""), key=f"b{row['id']}")
+                tipo_e = st.text_input("Tipo", row.get("tipo_contrato",""), key=f"tp{row['id']}")
+                status_e = st.selectbox("Status", STATUS_OPCOES, STATUS_OPCOES.index(row["status"]), key=f"s{row['id']}")
+                obs_e = st.text_area("Obs", row.get("observacoes",""), key=f"o{row['id']}")
 
-                with col1:
-                    st.write(f"Banco: {row.get('banco','')}")
-                    st.write(f"Tipo: {row.get('tipo_contrato','')}")
-                    st.write(f"Status: {row.get('status','')}")
-                    st.write(f"Obs: {row.get('observacoes','')}")
+                c1, c2, c3 = st.columns(3)
 
-                with col2:
-                    mensagem = f"Olá {row['nome']}, seguimos com seu {row['tipo_contrato']}."
-                    st.link_button(
-                        "📲 Abrir WhatsApp",
-                        gerar_link_whatsapp(row["telefone"], mensagem),
-                        use_container_width=True
-                    )
+                if c1.button("💾 Atualizar", key=f"u{row['id']}"):
+                    supabase.table("clientes").update({
+                        "nome": nome_e,
+                        "telefone": tel_e,
+                        "banco": banco_e,
+                        "tipo_contrato": tipo_e,
+                        "status": status_e,
+                        "observacoes": obs_e
+                    }).eq("id", row["id"]).execute()
+                    registrar_log(f"Atualizou cliente {nome_e}")
+                    st.cache_data.clear()
+                    st.rerun()
+
+                if c2.button("🧠 Gerar IA", key=f"ia{row['id']}"):
+                    st.session_state[f"ia_{row['id']}"] = gerar_mensagem_ia(row)
+
+                if c3.button("📲 WhatsApp", key=f"w{row['id']}"):
+                    msg = st.session_state.get(f"ia_{row['id']}") or gerar_mensagem_ia(row)
+                    st.link_button("Abrir WhatsApp", gerar_link_whatsapp(row["telefone"], msg))
+
+                if f"ia_{row['id']}" in st.session_state:
+                    st.text_area("Mensagem IA", st.session_state[f"ia_{row['id']}"], height=120)
 
 # ---------- USUÁRIOS ----------
 if menu == "Usuários":
-    st.title("👤 Usuários")
-    usuarios = carregar_usuarios()
-    if usuarios:
-        st.dataframe(pd.DataFrame(usuarios), use_container_width=True)
-    else:
-        st.info("Nenhum usuário cadastrado")
+    st.dataframe(pd.DataFrame(carregar_usuarios()), use_container_width=True)
 
 # ---------- LOGS ----------
 if menu == "Logs":
-    st.title("🕒 Logs")
-    logs = carregar_logs()
-    if logs:
-        st.dataframe(pd.DataFrame(logs), use_container_width=True)
-    else:
-        st.info("Nenhum log registrado")
+    st.dataframe(pd.DataFrame(carregar_logs()), use_container_width=True)
