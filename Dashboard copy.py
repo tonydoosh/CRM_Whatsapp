@@ -82,7 +82,7 @@ DEFAULT_RETIRAR_FATURAS = [
 ]
 
 # ================= CSS (LEVE) =================
-# (Corrigido: SEM <style> aninhado, e removendo bordas pretas/outline de inputs/botões no site todo)
+# (Corrigido: SEM <style> aninhado, sem '}' solto, removendo bordas pretas/outline e MATANDO o box-shadow/halo)
 st.markdown(
     """
 <style>
@@ -237,30 +237,32 @@ button[key^="ia_"]{
   background:#1f332c;
 }
 
+/* ===== Labels ===== */
+label{
+  color:#bfd1ca !important;
+  font-weight:700 !important;
+}
+
 /* ==============================
-   REMOVER BORDAS PRETAS / FOCUS (SITE TODO)
+   INPUTS / SELECT / TEXTAREA
+   (sem borda preta + foco dourado)
    ============================== */
 
-/* Inputs padrão (inclui login) */
+/* Input */
 [data-baseweb="input"] > div{
   background:#1f332c !important;
   border:1px solid #3d5e52 !important;
   border-radius:14px !important;
-  box-shadow:none !important;
   outline:none !important;
 }
 input{ color:#eaf2ef !important; }
+[data-baseweb="input"] svg{ color:#bfd1ca !important; }
 
-/* Focus bonito (sem borda preta) */
+/* Focus (dourado suave) */
 [data-baseweb="input"] > div:focus-within{
   border:1px solid #d4b15c !important;
   box-shadow:0 0 0 1px rgba(212,177,92,.35) !important;
   outline:none !important;
-}
-
-/* Ícones dentro do input (olhinho etc.) */
-[data-baseweb="input"] svg{
-  color:#bfd1ca !important;
 }
 
 /* Textarea */
@@ -268,7 +270,6 @@ input{ color:#eaf2ef !important; }
   background:#1f332c !important;
   border:1px solid #3d5e52 !important;
   border-radius:14px !important;
-  box-shadow:none !important;
   outline:none !important;
 }
 [data-baseweb="textarea"] > div:focus-within{
@@ -282,7 +283,6 @@ input{ color:#eaf2ef !important; }
   background:#1f332c !important;
   border:1px solid #3d5e52 !important;
   border-radius:14px !important;
-  box-shadow:none !important;
   outline:none !important;
 }
 [data-baseweb="select"] > div:focus-within{
@@ -297,16 +297,13 @@ input{ color:#eaf2ef !important; }
   outline:none !important;
 }
 
-/* ===== Botões (sem borda preta, mantendo estilo) ===== */
+/* ===== Botões (mantém estilo, sem borda preta) ===== */
 .stButton > button{
   background:linear-gradient(135deg,#d4b15c,#b18b3b) !important;
   color:#263d33 !important;
   font-weight:900 !important;
-
   border:0 !important;
   outline:none !important;
-  box-shadow:none !important;
-
   border-radius:14px !important;
   padding:.62rem 1rem !important;
   transition: transform .12s ease, filter .12s ease, box-shadow .18s ease;
@@ -325,12 +322,6 @@ input{ color:#eaf2ef !important; }
 .stButton > button:focus-visible{
   outline:none !important;
   box-shadow:0 0 0 2px rgba(212,177,92,.35) !important;
-}
-
-/* ===== Labels ===== */
-label{
-  color:#bfd1ca !important;
-  font-weight:700 !important;
 }
 
 /* ===== Login texts (mantém dourado) ===== */
@@ -355,58 +346,33 @@ label{
   margin-top: 10px;
   opacity: .92;
 }
-</style>
 
-/* ===== REMOVER BOX-SHADOW DE TODOS INPUTS (FORÇADO) ===== */
-
-/* BaseWeb (Streamlit) - remove shadow do container e de tudo dentro */
+/* =======================================================
+   REMOVER BOX-SHADOW / “HALO” (FORÇADO) — INPUTS NO SITE TODO
+   (isso é o que faltava pra sumir com o sombreado da sua print)
+   ======================================================= */
 [data-baseweb="input"],
-[data-baseweb="input"] *{
-  box-shadow: none !important;
-}
-
-/* Wrapper do "base-input" (algumas versões usam isso pro shadow) */
+[data-baseweb="input"] *,
 [data-baseweb="base-input"],
-[data-baseweb="base-input"] *{
-  box-shadow: none !important;
-}
-
-/* Textarea / Select também */
+[data-baseweb="base-input"] *,
 [data-baseweb="textarea"],
 [data-baseweb="textarea"] *,
 [data-baseweb="select"],
 [data-baseweb="select"] *{
-  box-shadow: none !important;
+  box-shadow:none !important;
 }
 
-/* Streamlit wrappers (pega o “retângulo” do campo) */
+/* wrappers do Streamlit (pega o container externo do campo) */
 [data-testid="stTextInput"] > div,
-[data-testid="stTextInput"] > div > div,
-[data-testid="stTextInput"] > div > div > div,
-[data-testid="stTextInput"] > div > div > div > div{
-  box-shadow: none !important;
-}
-
+[data-testid="stTextInput"] > div * ,
 [data-testid="stTextArea"] > div,
-[data-testid="stTextArea"] > div > div,
-[data-testid="stTextArea"] > div > div > div{
-  box-shadow: none !important;
-}
-
+[data-testid="stTextArea"] > div * ,
 [data-testid="stSelectbox"] > div,
-[data-testid="stSelectbox"] > div > div,
-[data-testid="stSelectbox"] > div > div > div{
-  box-shadow: none !important;
+[data-testid="stSelectbox"] > div *{
+  box-shadow:none !important;
 }
-
-/* Mantém seu foco “dourado” sem shadow grosso */
-[data-baseweb="input"] > div:focus-within,
-[data-baseweb="textarea"] > div:focus-within,
-[data-baseweb="select"] > div:focus-within{
-  box-shadow: 0 0 0 1px rgba(212,177,92,.35) !important;
-}
+</style>
 """,
-    
     unsafe_allow_html=True,
 )
 
@@ -1044,5 +1010,6 @@ if menu == "Logs":
         st.dataframe(pd.DataFrame(logs), use_container_width=True)
     else:
         st.info("Nenhum log registrado")
+
 
 
