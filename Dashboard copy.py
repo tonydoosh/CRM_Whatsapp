@@ -356,7 +356,56 @@ label{
   opacity: .92;
 }
 </style>
+/* ===== REMOVER BOX-SHADOW DE TODOS INPUTS (FORÇADO) ===== */
+
+/* BaseWeb (Streamlit) - remove shadow do container e de tudo dentro */
+[data-baseweb="input"],
+[data-baseweb="input"] *{
+  box-shadow: none !important;
+}
+
+/* Wrapper do "base-input" (algumas versões usam isso pro shadow) */
+[data-baseweb="base-input"],
+[data-baseweb="base-input"] *{
+  box-shadow: none !important;
+}
+
+/* Textarea / Select também */
+[data-baseweb="textarea"],
+[data-baseweb="textarea"] *,
+[data-baseweb="select"],
+[data-baseweb="select"] *{
+  box-shadow: none !important;
+}
+
+/* Streamlit wrappers (pega o “retângulo” do campo) */
+[data-testid="stTextInput"] > div,
+[data-testid="stTextInput"] > div > div,
+[data-testid="stTextInput"] > div > div > div,
+[data-testid="stTextInput"] > div > div > div > div{
+  box-shadow: none !important;
+}
+
+[data-testid="stTextArea"] > div,
+[data-testid="stTextArea"] > div > div,
+[data-testid="stTextArea"] > div > div > div{
+  box-shadow: none !important;
+}
+
+[data-testid="stSelectbox"] > div,
+[data-testid="stSelectbox"] > div > div,
+[data-testid="stSelectbox"] > div > div > div{
+  box-shadow: none !important;
+}
+
+/* Mantém seu foco “dourado” sem shadow grosso */
+[data-baseweb="input"] > div:focus-within,
+[data-baseweb="textarea"] > div:focus-within,
+[data-baseweb="select"] > div:focus-within{
+  box-shadow: 0 0 0 1px rgba(212,177,92,.35) !important;
+}
 """,
+    
     unsafe_allow_html=True,
 )
 
@@ -994,3 +1043,4 @@ if menu == "Logs":
         st.dataframe(pd.DataFrame(logs), use_container_width=True)
     else:
         st.info("Nenhum log registrado")
+
