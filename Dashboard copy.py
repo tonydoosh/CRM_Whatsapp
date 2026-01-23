@@ -116,7 +116,7 @@ def login():
                 st.session_state["usuario"] = usuario
                 st.session_state["nivel"] = u.get("nivel")
                 registrar_log("Login")
-                st.experimental_rerun()
+                st.rerun()
             else:
                 st.error("Usuário ou senha inválidos")
         except Exception as e:
@@ -139,7 +139,7 @@ st.sidebar.title("🔧 Menu")
 if st.sidebar.button("🚪 Sair", use_container_width=True):
     registrar_log("Logout")
     st.session_state.clear()
-    st.experimental_rerun()
+    st.rerun()
 
 menu = st.sidebar.radio(
     "Selecione:",
@@ -186,7 +186,7 @@ if menu == "CRM":
                     "usuario": st.session_state["usuario"]
                 }).execute()
                 registrar_log(f"Cadastrou cliente {nome}")
-                st.experimental_rerun()
+                st.rerun()
 
     st.divider()
 
@@ -200,4 +200,5 @@ if menu == "CRM":
                     st.write(f"Tipo: {row.get('tipo_contrato','')}")
                     st.write(f"Status: {row.get('status','')}")
                     st.write(f"Obs: {row.get('observacoes','')}")
+
 
