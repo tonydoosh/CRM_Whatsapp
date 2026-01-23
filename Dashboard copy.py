@@ -134,7 +134,7 @@ def login():
                             st.session_state["usuario"] = usuario
                             st.session_state["nivel"] = usuario_db["nivel"]
                             registrar_log("Login")
-                            st.rerun()
+                            st.experimental_rerun()
                         else:
                             st.error("Usuário ou senha inválidos")
                 except Exception as e:
@@ -157,7 +157,7 @@ st.sidebar.title("🔧 Menu")
 if st.sidebar.button("🚪 Sair", use_container_width=True):
     registrar_log("Logout")
     st.session_state.clear()
-    st.rerun()
+    st.experimental_rerun()
 
 menu = st.sidebar.radio(
     "Selecione:",
@@ -230,7 +230,7 @@ if menu == "CRM":
                         }).execute()
                         registrar_log(f"Cadastro cliente: {nome}")
                         st.success("✅ Cliente salvo com sucesso!")
-                        st.rerun()
+                        st.experimental_rerun()
                     except Exception as e:
                         st.error(f"Erro ao salvar cliente: {e}")
         
@@ -260,11 +260,11 @@ if menu == "CRM":
                                 with st.spinner("Gerando mensagem..."):
                                     msg = gerar_mensagem_whatsapp(row)
                                     st.session_state[f"msg_{row['id']}"] = msg
-                                    st.rerun()
+                                    st.experimental_rerun()
                             
                             if st.button("✏️ Editar", key=f"edit_{row['id']}", use_container_width=True):
                                 st.session_state["editar_id"] = row["id"]
-                                st.rerun()
+                                st.experimental_rerun()
                             
                             # Permitir deletar apenas se for o dono ou admin
                             can_delete = st.session_state["nivel"] == "admin" or row.get("usuario") == st.session_state["usuario"]
@@ -273,7 +273,7 @@ if menu == "CRM":
                                     supabase.table("clientes").delete().eq("id", row["id"]).execute()
                                     registrar_log(f"Deletou cliente: {row['nome']}")
                                     st.success("✅ Cliente deletado!")
-                                    st.rerun()
+                                    st.experimental_rerun()
                         
                         # Mostrar mensagem gerada
                         msg_key = f"msg_{row['id']}"
@@ -347,7 +347,7 @@ if menu == "CRM":
                         registrar_log(f"Editou cliente: {nome_edit}")
                         st.success("✅ Cliente atualizado!")
                         del st.session_state["editar_id"]
-                        st.rerun()
+                        st.experimental_rerun()
             except Exception as e:
                 st.error(f"Erro ao editar cliente: {e}")
     
@@ -387,7 +387,7 @@ if menu == "Usuários":
                         }).execute()
                         registrar_log(f"Criou usuário: {novo_usuario}")
                         st.success(f"✅ Usuário {novo_usuario} criado!")
-                        st.rerun()
+                        st.experimental_rerun()
                     except Exception as e:
                         st.error(f"Erro: {str(e)}")
         
@@ -409,13 +409,13 @@ if menu == "Usuários":
                         novo_status = not u['ativo']
                         supabase.table("usuarios").update({"ativo": novo_status}).eq("id", u["id"]).execute()
                         registrar_log(f"{'Bloqueou' if not novo_status else 'Desbloqueou'}: {u['usuario']}")
-                        st.rerun()
+                        st.experimental_rerun()
                     
                     if col5.button("🗑️ Deletar", key=f"del_user_{u['id']}", use_container_width=True):
                         supabase.table("usuarios").delete().eq("id", u["id"]).execute()
                         registrar_log(f"Deletou usuário: {u['usuario']}")
                         st.success("✅ Usuário deletado!")
-                        st.rerun()
+                        st.experimental_rerun()
                 else:
                     col4.info("👤 Você")
         else:
@@ -437,3 +437,4 @@ if menu == "Logs":
             st.info("Nenhum log registrado")
     except Exception as e:
         st.error(f"Erro ao carregar logs: {e}")
+
