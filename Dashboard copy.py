@@ -7,11 +7,10 @@ import hashlib
 import requests
 import urllib.parse
 
-# ---------- CONFIGURAÇÃO ----------
+# ---------- CONFIG ----------
 SUPABASE_URL = st.secrets["SUPABASE_URL"]
 SUPABASE_KEY = st.secrets["SUPABASE_KEY"]
 GROQ_API_KEY = st.secrets["api_key"]
-GROQ_URL = "https://api.groq.com/openai/v1/chat/completions"
 
 LOGO_URL = "https://github.com/tonydoosh/CRM_Whatsapp/blob/main/logo.jpeg?raw=true"
 
@@ -33,53 +32,42 @@ STATUS_OPCOES = [
 st.markdown("""
 <style>
 
-/* Remove header verde do Streamlit */
-header[data-testid="stHeader"] {
-    display: none;
+body, .stApp {
+    background-color: #263d33;
 }
 
-/* Fundo geral */
-.stApp {
-    background-color:#263d33;
-    color:#F5F5F5;
+/* LOGIN */
+.login-box {
+    max-width:420px;
+    margin:auto;
+    padding:40px;
+    background:#1f332b;
+    border-radius:18px;
+    border:1px solid #3e665a;
+    box-shadow:0 0 25px rgba(0,0,0,.5);
 }
 
-/* Sidebar */
-section[data-testid="stSidebar"] {
-    background-color:#243F37;
-}
-
-/* Layout */
-.block-container {
-    padding-top: 2rem;
-}
-
-
-/* Cards */
+/* CARDS */
 .card {
-    background:#243F37;
+    background:#1f332b;
     padding:20px;
     border-radius:16px;
-    border:1px solid #3E665A;
-    margin-bottom:16px;
+    border:1px solid #3e665a;
+    margin-bottom:20px;
 }
 
-/* Botões padrão */
-.stButton > button {
-    background-color:#C9A24D;
-    color:#1F3B33;
-    font-weight:600;
+/* NÃO esconder botões */
+.stButton > button,
+.stForm button {
+    background:#c9a24d !important;
+    color:#263d33 !important;
     border-radius:10px;
-    border:none;
-}
-
-.stButton > button:hover {
-    background-color:#B68C2E;
+    font-weight:700;
 }
 
 /* Botão IA animado */
 button[key^="ia_"] {
-    background:linear-gradient(135deg,#C9A24D,#B68C2E)!important;
+    background: linear-gradient(135deg,#c9a24d,#b68c2e)!important;
     animation:pulse 2s infinite;
 }
 
@@ -93,11 +81,11 @@ button[key^="ia_"] {
 """, unsafe_allow_html=True)
 
 # ---------- FUNÇÕES ----------
-def gerar_hash(senha):
-    return hashlib.sha256(senha.encode()).hexdigest()
+def gerar_hash(s):
+    return hashlib.sha256(s.encode()).hexdigest()
 
-def verificar_senha(senha, senha_hash):
-    return gerar_hash(senha) == senha_hash
+def verificar_senha(s, h):
+    return gerar_hash(s) == h
 
 def registrar_log(acao):
     try:
@@ -109,35 +97,32 @@ def registrar_log(acao):
     except:
         pass
 
-def gerar_link_whatsapp(telefone, mensagem):
-    telefone = "".join(filter(str.isdigit, telefone))
-    texto = urllib.parse.quote(mensagem)
-    return f"https://web.whatsapp.com/send?phone=55{telefone}&text={texto}"
+def gerar_link_whatsapp(tel, msg):
+    tel = "".join(filter(str.isdigit, tel))
+    return f"https://web.whatsapp.com/send?phone=55{tel}&text={urllib.parse.quote(msg)}"
 
 def gerar_mensagem_ia(cliente):
-    prompt = f"""
+    payload = {
+        "model": "meta-llama/llama-4-scout-17b-16e-instruct",
+        "messages": [
+            {"role": "system", "content": "Consultor financeiro especialista em WhatsApp"},
+            {"role": "user", "content": f"""
 Cliente: {cliente['nome']}
 Produto: {cliente.get('tipo_contrato')}
 Banco: {cliente.get('banco')}
 Status: {cliente.get('status')}
 Observações: {cliente.get('observacoes')}
-
-Gere uma mensagem profissional, curta e objetiva para WhatsApp.
-"""
-    payload = {
-        "model": "meta-llama/llama-4-scout-17b-16e-instruct",
-        "messages": [
-            {"role": "system", "content": "Consultor financeiro especialista em WhatsApp"},
-            {"role": "user", "content": prompt}
+Gere uma mensagem curta e profissional.
+"""}
         ],
         "temperature": 0.4,
         "max_tokens": 150
     }
-    headers = {
-        "Authorization": f"Bearer {GROQ_API_KEY}",
-        "Content-Type": "application/json"
-    }
-    r = requests.post(GROQ_URL, json=payload, headers=headers, timeout=30)
+    r = requests.post(
+        "https://api.groq.com/openai/v1/chat/completions",
+        json=payload,
+        headers={"Authorization": f"Bearer {GROQ_API_KEY}"}
+    )
     return r.json()["choices"][0]["message"]["content"]
 
 @st.cache_data(ttl=86400)
@@ -157,7 +142,13 @@ def carregar_logs():
 # ---------- LOGIN ----------
 def login():
     st.markdown('<div class="login-box">', unsafe_allow_html=True)
-    st.image(LOGO_URL, width=200)
+
+    st.markdown(f"""
+    <div style="display:flex;justify-content:center;margin-bottom:25px;">
+        <img src="{LOGO_URL}" width="220">
+    </div>
+    """, unsafe_allow_html=True)
+
     usuario = st.text_input("Usuário")
     senha = st.text_input("Senha", type="password")
 
@@ -173,6 +164,7 @@ def login():
             })
             registrar_log("Login")
             st.rerun()
+
     st.markdown("</div>", unsafe_allow_html=True)
 
 # ---------- SESSÃO ----------
@@ -202,18 +194,16 @@ menu = st.sidebar.radio(
 if menu == "CRM":
     st.title("📲 CRM de Clientes – WhatsApp")
 
-    with st.form("form_add"):
-        st.subheader("➕ Adicionar Cliente")
+    with st.form("add_cliente"):
         col1, col2 = st.columns(2)
-        with col1:
-            nome = st.text_input("Nome *")
-            telefone = st.text_input("Telefone *")
-            banco = st.text_input("Banco")
-        with col2:
-            tipo = st.selectbox("Tipo *", ["cartão","consignado","empréstimo","saque","benefício","crédito"])
-            status = st.selectbox("Status *", STATUS_OPCOES)
-            obs = st.text_area("Observações")
-        if st.form_submit_button("Salvar", use_container_width=True):
+        nome = col1.text_input("Nome *")
+        telefone = col1.text_input("Telefone *")
+        banco = col1.text_input("Banco")
+        tipo = col2.selectbox("Tipo", ["cartão","consignado","empréstimo","saque","benefício","crédito"])
+        status = col2.selectbox("Status", STATUS_OPCOES)
+        obs = st.text_area("Observações")
+
+        if st.form_submit_button("➕ Adicionar Cliente", use_container_width=True):
             supabase.table("clientes").insert({
                 "nome": nome,
                 "telefone": telefone,
@@ -223,44 +213,44 @@ if menu == "CRM":
                 "observacoes": obs,
                 "usuario": st.session_state["usuario"]
             }).execute()
-            registrar_log(f"Cadastrou cliente {nome}")
+            registrar_log(f"Adicionou cliente {nome}")
             st.cache_data.clear()
             st.rerun()
 
-    clientes = carregar_clientes(st.session_state["nivel"], st.session_state["usuario"])
-    df = pd.DataFrame(clientes) if clientes else pd.DataFrame()
-
-    for _, row in df.iterrows():
+    for c in carregar_clientes(st.session_state["nivel"], st.session_state["usuario"]):
         st.markdown(f"""
         <div class="card">
-            <b>👤 {row['nome']}</b><br>
-            📞 {row['telefone']}<br>
-            🏦 {row.get('banco','')}<br>
-            📄 {row.get('tipo_contrato','')}<br>
-            📌 {row.get('status','')}<br>
-            📝 {row.get('observacoes','')}
+        <b>{c['nome']}</b><br>
+        📞 {c['telefone']}<br>
+        🏦 {c.get('banco','')}<br>
+        📄 {c.get('tipo_contrato','')}<br>
+        📌 {c.get('status','')}
         </div>
         """, unsafe_allow_html=True)
 
-        c1, c2 = st.columns(2)
-        if c1.button("🤖 Gerar IA", key=f"ia_{row['id']}"):
-            st.session_state[f"msg_{row['id']}"] = gerar_mensagem_ia(row)
+        col1, col2, col3 = st.columns(3)
 
-        if c2.button("📲 WhatsApp", key=f"w_{row['id']}"):
-            msg = st.session_state.get(f"msg_{row['id']}") or gerar_mensagem_ia(row)
-            st.link_button("Abrir WhatsApp", gerar_link_whatsapp(row["telefone"], msg))
+        if col1.button("💾 Atualizar", key=f"up_{c['id']}"):
+            registrar_log(f"Atualizou cliente {c['nome']}")
+            st.success("Atualizado")
 
-        if f"msg_{row['id']}" in st.session_state:
-            st.text_area("Mensagem IA", st.session_state[f"msg_{row['id']}"], height=100)
+        if col2.button("🤖 Gerar IA", key=f"ia_{c['id']}"):
+            st.session_state[f"msg_{c['id']}"] = gerar_mensagem_ia(c)
+
+        if col3.button("📲 WhatsApp", key=f"w_{c['id']}"):
+            msg = st.session_state.get(f"msg_{c['id']}") or gerar_mensagem_ia(c)
+            st.link_button("Abrir WhatsApp", gerar_link_whatsapp(c["telefone"], msg))
+
+        if f"msg_{c['id']}" in st.session_state:
+            st.text_area("Mensagem IA", st.session_state[f"msg_{c['id']}"], height=100)
 
 # ---------- USUÁRIOS ----------
 if menu == "Usuários":
-    st.title("👤 Gestão de Usuários")
-    st.dataframe(pd.DataFrame(carregar_usuarios()), use_container_width=True)
+    st.title("👤 Usuários")
+    for u in carregar_usuarios():
+        st.write(f"{u['usuario']} | {u['nivel']} | {'Ativo' if u['ativo'] else 'Inativo'}")
 
 # ---------- LOGS ----------
 if menu == "Logs":
     st.title("📜 Logs")
     st.dataframe(pd.DataFrame(carregar_logs()), use_container_width=True)
-
-
