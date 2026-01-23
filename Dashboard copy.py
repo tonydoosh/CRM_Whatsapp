@@ -135,7 +135,7 @@ def carregar_logs():
 # ---------- LOGIN PREMIUM ----------
 def login():
     st.markdown('<div class="login-box">', unsafe_allow_html=True)
-    st.image(".\logo.jpeg", width=200)
+    st.image("https://github.com/tonydoosh/CRM_Whatsapp/blob/main/logo.jpeg?raw=true", width=200)
     usuario = st.text_input("Usuário")
     senha = st.text_input("Senha", type="password")
 
@@ -162,7 +162,7 @@ if not st.session_state["logado"]:
     st.stop()
 
 # ---------- SIDEBAR ----------
-st.sidebar.image(".\logo.jpeg", use_container_width=True)
+st.sidebar.image("https://github.com/tonydoosh/CRM_Whatsapp/blob/main/logo.jpeg?raw=true", use_container_width=True)
 st.sidebar.markdown("---")
 st.sidebar.title("🔧 Menu")
 
@@ -218,5 +218,6 @@ if menu == "Usuários":
 if menu == "Logs":
     st.title("📜 Logs do Sistema")
     st.dataframe(pd.DataFrame(carregar_logs()), use_container_width=True)
+
 
 
