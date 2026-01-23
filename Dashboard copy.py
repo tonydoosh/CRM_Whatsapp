@@ -8,6 +8,11 @@ import requests
 import urllib.parse
 import webbrowser
 
+# ---------- CONFIGURAÇÃO ----------
+SUPABASE_URL = st.secrets["SUPABASE_URL"]
+SUPABASE_KEY = st.secrets["SUPABASE_KEY"]
+GROQ_API_KEY = st.secrets["api_key"]
+GROQ_URL = "https://api.groq.com/openai/v1/chat/completions"
 
 supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
 
