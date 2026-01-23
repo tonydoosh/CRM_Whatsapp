@@ -1,0 +1,7 @@
+groq
+pandas
+playwright
+requests
+selenium
+streamlit
+supabase
