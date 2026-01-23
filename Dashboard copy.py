@@ -75,17 +75,17 @@ Gere uma mensagem profissional, curta e objetiva para WhatsApp.
     r = requests.post(GROQ_URL, json=payload, headers=headers, timeout=30)
     return r.json()["choices"][0]["message"]["content"]
 
-@st.cache_data(ttl=60)
+@st.cache_data(ttl=86400)  # 24 horas_data(ttl=60)
 def carregar_clientes(nivel, usuario):
     if nivel == "admin":
         return supabase.table("clientes").select("*").execute().data
     return supabase.table("clientes").select("*").eq("usuario", usuario).execute().data
 
-@st.cache_data(ttl=60)
+@st.cache_data(ttl=86400)  # 24 horas_data(ttl=60)
 def carregar_usuarios():
     return supabase.table("usuarios").select("*").execute().data
 
-@st.cache_data(ttl=60)
+@st.cache_data(ttl=86400)  # 24 horas_data(ttl=60)
 def carregar_logs():
     return supabase.table("logs").select("*").order("id", desc=True).limit(100).execute().data
 
@@ -203,3 +203,4 @@ if menu == "Usuários":
 # ---------- LOGS ----------
 if menu == "Logs":
     st.dataframe(pd.DataFrame(carregar_logs()), use_container_width=True)
+
