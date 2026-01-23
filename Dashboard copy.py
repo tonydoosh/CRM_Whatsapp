@@ -645,4 +645,101 @@ if menu == "CRM":
                     st.session_state.confirm_delete_id = None
                     st.cache_data.clear()
                     st.rerun()
-                if d2.button("❌ Cancelar", key=f"cancel_del_cliente_{c['id']}", use_container_w_
+                if d2.button("❌ Cancelar", key=f"cancel_del_cliente_{c['id']}", use_container_width=True):
+                    st.session_state.confirm_delete_id = None
+                    st.rerun()
+
+            if st.session_state.get("edit_id") == c["id"]:
+                with st.form(f"edit_form_{c['id']}"):
+                    st.markdown("**Editar cliente**")
+                    banco_e = st.text_input("Banco", c.get("banco", ""))
+                    tipo_e = st.text_input("Tipo", c.get("tipo_contrato", ""))
+                    status_e = st.selectbox(
+                        "Status",
+                        STATUS_OPCOES,
+                        index=STATUS_OPCOES.index(c.get("status")) if c.get("status") in STATUS_OPCOES else 0
+                    )
+                    obs_e = st.text_area("Observações", c.get("observacoes", ""))
+                    if st.form_submit_button("💾 Atualizar", use_container_width=True):
+                        supabase.table("clientes").update({
+                            "banco": banco_e,
+                            "tipo_contrato": tipo_e,
+                            "status": status_e,
+                            "observacoes": obs_e
+                        }).eq("id", c["id"]).execute()
+                        registrar_log(f"Atualizou cliente {c.get('nome', '')}")
+                        st.session_state.pop("edit_id", None)
+                        st.cache_data.clear()
+                        st.rerun()
+
+            if f"msg_{c['id']}" in st.session_state:
+                st.text_area("Mensagem IA (contextual)", st.session_state[f"msg_{c['id']}"], height=90)
+
+# ================= USUÁRIOS =================
+if menu == "Usuários":
+    st.title("👤 Operadores")
+
+    with st.form("add_user"):
+        u = st.text_input("Usuário")
+        s = st.text_input("Senha", type="password")
+        n = st.selectbox("Nível", ["operador", "admin"])
+        ativo = st.selectbox("Ativo", [True, False], index=0)
+        if st.form_submit_button("Adicionar", use_container_width=True):
+            supabase.table("usuarios").insert({
+                "usuario": u,
+                "senha": gerar_hash(s),
+                "nivel": n,
+                "ativo": ativo
+            }).execute()
+            registrar_log(f"Criou usuário {u}")
+            st.cache_data.clear()
+            st.rerun()
+
+    st.divider()
+
+    for u in carregar_usuarios():
+        with st.expander(f"{u.get('usuario','')} | {u.get('nivel','')} | {'Ativo' if u.get('ativo') else 'Inativo'}"):
+            col1, col2, col3 = st.columns(3)
+
+            with col1:
+                usuario_e = st.text_input("Usuário", u.get("usuario", ""), key=f"user_{u['id']}")
+                nivel_e = st.selectbox(
+                    "Nível",
+                    ["operador", "admin"],
+                    index=0 if u.get("nivel") == "operador" else 1,
+                    key=f"nivel_{u['id']}"
+                )
+
+            with col2:
+                ativo_e = st.selectbox(
+                    "Ativo",
+                    [True, False],
+                    index=0 if u.get("ativo") else 1,
+                    key=f"ativo_{u['id']}"
+                )
+                nova_senha = st.text_input("Nova senha (opcional)", type="password", key=f"senha_{u['id']}")
+
+            with col3:
+                if st.button("💾 Salvar", key=f"save_{u['id']}", use_container_width=True):
+                    d = {"usuario": usuario_e, "nivel": nivel_e, "ativo": ativo_e}
+                    if nova_senha:
+                        d["senha"] = gerar_hash(nova_senha)
+                    supabase.table("usuarios").update(d).eq("id", u["id"]).execute()
+                    registrar_log(f"Editou usuário {usuario_e}")
+                    st.cache_data.clear()
+                    st.rerun()
+
+                if st.button("🗑️ Excluir", key=f"del_{u['id']}", use_container_width=True):
+                    supabase.table("usuarios").delete().eq("id", u["id"]).execute()
+                    registrar_log(f"Excluiu usuário {u.get('usuario','')}")
+                    st.cache_data.clear()
+                    st.rerun()
+
+# ================= LOGS =================
+if menu == "Logs":
+    st.title("📜 Logs")
+    logs = carregar_logs()
+    if logs:
+        st.dataframe(pd.DataFrame(logs), use_container_width=True)
+    else:
+        st.info("Nenhum log registrado")
