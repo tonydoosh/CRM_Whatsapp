@@ -4,4 +4,6 @@ playwright
 requests
 selenium
 streamlit
+
 supabase
+altair<5
