@@ -72,75 +72,99 @@ button[key^="ia_"]{
   100%{box-shadow:0 0 0 0 rgba(212,177,92,0);}
 }
 
-/* ===== Login (verde mais escuro + barra atrás da logo + float) ===== */
+/* ===== Login (barras atrás + float) ===== */
 .login-wrap{
-  max-width: 420px;
-  margin: 7.5vh auto 0 auto;
+  max-width: 520px;
+  margin: 7.2vh auto 0 auto;
 }
 .login-box{
-  background:#182a24;              /* verde mais escuro (contraste) */
+  background:#182a24;
   border:1px solid #3d5e52;
   border-radius:22px;
   padding:22px 22px 20px 22px;
   box-shadow:0 18px 44px rgba(0,0,0,.35);
 }
+
+/* Hero com barras decorativas */
 .login-hero{
   position:relative;
   display:flex;
   justify-content:center;
   align-items:center;
-  padding-top: 14px;
-  margin-bottom: 10px;
+  padding: 22px 0 10px 0;
+  margin-bottom: 6px;
+  overflow:hidden;
+  border-radius:18px;
+  background: rgba(0,0,0,.05);
+  border: 1px solid rgba(61,94,82,.55);
 }
-.login-bar{
+
+/* barras (camadas) */
+.hero-bar{
   position:absolute;
-  top: 6px;
-  width: 92%;
-  height: 34px;                    /* proporção “barra” */
+  left:50%;
+  transform:translateX(-50%);
+  width: 120%;
+  height: 44px;
   border-radius: 999px;
-  background:#1f332c;              /* tom por trás */
-  border:1px solid #3d5e52;
-  z-index:0;
-  animation: floaty 4.2s ease-in-out infinite;
+  background: rgba(31,51,44,.85);
+  border: 1px solid rgba(61,94,82,.7);
+  z-index: 0;
+  filter: blur(.0px);
+  opacity: .95;
+  animation: floaty 4.6s ease-in-out infinite;
 }
+.hero-bar.b1{ top: 10px; width: 112%; height: 40px; opacity:.88; }
+.hero-bar.b2{ top: 34px; width: 135%; height: 50px; opacity:.34; }
+.hero-bar.b3{ top: 68px; width: 125%; height: 44px; opacity:.22; }
+.hero-bar.b4{ top: -14px; width: 92%;  height: 34px; opacity:.55; }
+.hero-bar.b5{ top: 92px; width: 98%;  height: 36px; opacity:.18; }
+
+/* detalhe de brilho dourado bem suave */
+.hero-glow{
+  position:absolute;
+  width: 520px;
+  height: 220px;
+  border-radius: 999px;
+  background: radial-gradient(circle at 50% 50%, rgba(212,177,92,.18), rgba(212,177,92,0) 70%);
+  z-index: 0;
+  animation: glow 6.8s ease-in-out infinite;
+}
+@keyframes glow{
+  0%,100%{ transform: translateY(0px); opacity:.30; }
+  50%{ transform: translateY(-8px); opacity:.42; }
+}
+
+/* logo */
 .login-logo{
   position:relative;
   z-index:2;
-  width: 210px;
-  border-radius: 14px;
+  width: 240px;
+  border-radius: 16px;
   border:1px solid #3d5e52;
   background:#1f332c;
-  animation: floaty 4.2s ease-in-out infinite;
+  animation: floaty 4.6s ease-in-out infinite;
   animation-delay: .18s;
 }
+
 @keyframes floaty{
+  0%, 100% { transform: translate(-50%, 0px); }
+  50% { transform: translate(-50%, -7px); }
+}
+
+/* Para logo, não queremos -50% no translate. Ajuste com wrapper */
+.logo-wrap{
+  position:relative;
+  z-index:2;
+  animation: floatyLogo 4.6s ease-in-out infinite;
+  animation-delay: .18s;
+}
+@keyframes floatyLogo{
   0%, 100% { transform: translateY(0px); }
   50% { transform: translateY(-7px); }
 }
 
-.login-title{
-  text-align:center;
-  color:#d4b15c;
-  font-weight:900;
-  font-size: 1.10rem;
-  margin: 6px 0 6px 0;
-}
-.login-sub{
-  text-align:center;
-  color:#bfd1ca;
-  font-weight:600;
-  font-size:.92rem;
-  margin: 0 0 14px 0;
-}
-.login-hint{
-  text-align:center;
-  color:#bfd1ca;
-  font-size:.86rem;
-  margin-top: 10px;
-  opacity: .92;
-}
-
-/* Inputs */
+/* inputs */
 [data-baseweb="input"] > div{
   background:#1f332c !important;
   border:1px solid #3d5e52 !important;
@@ -169,6 +193,28 @@ label{
 .stButton > button:active{
   transform: translateY(0px);
   filter: brightness(1.02);
+}
+
+.login-title{
+  text-align:center;
+  color:#d4b15c;
+  font-weight:900;
+  font-size: 1.10rem;
+  margin: 10px 0 6px 0;
+}
+.login-sub{
+  text-align:center;
+  color:#bfd1ca;
+  font-weight:600;
+  font-size:.92rem;
+  margin: 0 0 14px 0;
+}
+.login-hint{
+  text-align:center;
+  color:#bfd1ca;
+  font-size:.86rem;
+  margin-top: 10px;
+  opacity: .92;
 }
 </style>
 """, unsafe_allow_html=True)
@@ -239,15 +285,22 @@ def carregar_usuarios():
 def carregar_logs():
     return supabase.table("logs").select("*").order("id", desc=True).limit(200).execute().data
 
-# ================= LOGIN (barra atrás da logo + float) =================
+# ================= LOGIN (barras decorativas + float) =================
 def login():
     st.markdown('<div class="login-wrap"><div class="login-box">', unsafe_allow_html=True)
 
     st.markdown(
         f"""
         <div class="login-hero">
-          <div class="login-bar"></div>
-          <img class="login-logo" src="{LOGO_URL}">
+          <div class="hero-glow"></div>
+          <div class="hero-bar b4"></div>
+          <div class="hero-bar b1"></div>
+          <div class="hero-bar b2"></div>
+          <div class="hero-bar b3"></div>
+          <div class="hero-bar b5"></div>
+          <div class="logo-wrap">
+            <img class="login-logo" src="{LOGO_URL}">
+          </div>
         </div>
         <div class="login-title">Acesso ao CRM</div>
         <div class="login-sub">Entre com seu usuário e senha para continuar</div>
@@ -440,5 +493,3 @@ if menu == "Logs":
         st.dataframe(pd.DataFrame(logs), use_container_width=True)
     else:
         st.info("Nenhum log registrado")
-
-
