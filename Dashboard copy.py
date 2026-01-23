@@ -135,7 +135,7 @@ def carregar_logs():
 # ---------- LOGIN PREMIUM ----------
 def login():
     st.markdown('<div class="login-box">', unsafe_allow_html=True)
-    st.image("file:///C:/Users/Usu%C3%A1rio/Pictures/wpp%20perfil/WhatsApp%20Image%202025-12-03%20at%2014.29.31%20(3).jpeg", width=200)
+    st.image(".\logo.jpeg", width=200)
     usuario = st.text_input("Usuário")
     senha = st.text_input("Senha", type="password")
 
@@ -218,4 +218,5 @@ if menu == "Usuários":
 if menu == "Logs":
     st.title("📜 Logs do Sistema")
     st.dataframe(pd.DataFrame(carregar_logs()), use_container_width=True)
+
 
