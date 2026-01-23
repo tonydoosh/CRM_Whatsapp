@@ -262,6 +262,9 @@ Gere mensagem curta para WhatsApp."""}
     except Exception:
         return "⚠️ Erro ao gerar mensagem IA."
 
+def excluir_cliente(cliente_id):
+    supabase.table("clientes").delete().eq("id", cliente_id).execute()
+
 @st.cache_data(ttl=86400)
 def carregar_clientes(n: str, u: str):
     if n == "admin":
@@ -318,6 +321,9 @@ def login():
 if "logado" not in st.session_state:
     st.session_state["logado"] = False
 
+if "confirm_delete_id" not in st.session_state:
+    st.session_state.confirm_delete_id = None
+
 if not st.session_state.get("logado"):
     login()
     st.stop()
@@ -364,10 +370,12 @@ if menu == "CRM":
     st.divider()
 
     clientes = carregar_clientes(st.session_state.get("nivel"), st.session_state.get("usuario"))
-    cols = st.columns(2)
+
+    # ✅ 1 COLUNA (em vez de 2)
+    cols = st.columns(1)
 
     for i, c in enumerate(clientes):
-        with cols[i % 2]:
+        with cols[0]:
             st.markdown(f"""
             <div class="card">
               <h4>{c.get('nome','')}</h4>
@@ -378,7 +386,8 @@ if menu == "CRM":
             </div>
             """, unsafe_allow_html=True)
 
-            b1, b2, b3 = st.columns(3)
+            # ✅ Botões: + Excluir
+            b1, b2, b3, b4 = st.columns(4)
 
             if b1.button("🤖 Gerar IA", key=f"ia_{c['id']}"):
                 st.session_state[f"msg_{c['id']}"] = gerar_mensagem_ia(c)
@@ -389,6 +398,25 @@ if menu == "CRM":
             if b3.button("📲 WhatsApp", key=f"w_{c['id']}"):
                 msg = st.session_state.get(f"msg_{c['id']}") or gerar_mensagem_ia(c)
                 st.link_button("Abrir WhatsApp", gerar_link_whatsapp(c.get("telefone", ""), msg), use_container_width=True)
+
+            if b4.button("🗑️ Excluir", key=f"del_cliente_{c['id']}"):
+                st.session_state.confirm_delete_id = c["id"]
+
+            # ✅ Confirmação de exclusão
+            if st.session_state.confirm_delete_id == c["id"]:
+                st.warning("Tem certeza que deseja excluir este cliente? Essa ação não pode ser desfeita.")
+                d1, d2 = st.columns(2)
+
+                if d1.button("✅ Confirmar exclusão", key=f"conf_del_cliente_{c['id']}", use_container_width=True):
+                    excluir_cliente(c["id"])
+                    registrar_log(f"Excluiu cliente {c.get('nome','')}")
+                    st.session_state.confirm_delete_id = None
+                    st.cache_data.clear()
+                    st.rerun()
+
+                if d2.button("❌ Cancelar", key=f"cancel_del_cliente_{c['id']}", use_container_width=True):
+                    st.session_state.confirm_delete_id = None
+                    st.rerun()
 
             if st.session_state.get("edit_id") == c["id"]:
                 with st.form(f"edit_form_{c['id']}"):
