@@ -435,4 +435,10 @@ if menu == "Usuários":
 # ================= LOGS =================
 if menu == "Logs":
     st.title("📜 Logs")
-    st.dataframe(pd.DataFrame(carreg
+    logs = carregar_logs()
+    if logs:
+        st.dataframe(pd.DataFrame(logs), use_container_width=True)
+    else:
+        st.info("Nenhum log registrado")
+
+
