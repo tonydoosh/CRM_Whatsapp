@@ -162,7 +162,7 @@ if not st.session_state["logado"]:
     st.stop()
 
 # ---------- SIDEBAR ----------
-st.sidebar.image("LINK_DA_SUA_LOGO", use_container_width=True)
+st.sidebar.image(".\logo.jpeg", use_container_width=True)
 st.sidebar.markdown("---")
 st.sidebar.title("🔧 Menu")
 
@@ -218,3 +218,4 @@ if menu == "Usuários":
 if menu == "Logs":
     st.title("📜 Logs do Sistema")
     st.dataframe(pd.DataFrame(carregar_logs()), use_container_width=True)
+
