@@ -3,7 +3,7 @@ pandas
 playwright
 requests
 selenium
-streamlit
+streamlit = 1.53.0
 supabase
 altair<5
 base58 
@@ -21,4 +21,5 @@ pydeck
 python-dateutil
 requests
 standard-imghdr
+
 
