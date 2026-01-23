@@ -40,7 +40,7 @@ header[data-testid="stHeader"] {
 
 /* Fundo geral */
 .stApp {
-    background-color:#1F3B33;
+    background-color:#263d33;
     color:#F5F5F5;
 }
 
@@ -262,4 +262,5 @@ if menu == "Usuários":
 if menu == "Logs":
     st.title("📜 Logs")
     st.dataframe(pd.DataFrame(carregar_logs()), use_container_width=True)
+
 
