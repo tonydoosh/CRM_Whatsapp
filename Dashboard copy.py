@@ -72,7 +72,7 @@ button[key^="ia_"]{
   100%{box-shadow:0 0 0 0 rgba(212,177,92,0);}
 }
 
-/* ===== Login (mais escuro que a logo, intuitivo) ===== */
+/* ===== Login (verde mais escuro + barra atrás da logo + float) ===== */
 .login-wrap{
   max-width: 420px;
   margin: 7.5vh auto 0 auto;
@@ -81,23 +81,49 @@ button[key^="ia_"]{
   background:#182a24;              /* verde mais escuro (contraste) */
   border:1px solid #3d5e52;
   border-radius:22px;
-  padding:26px;
+  padding:22px 22px 20px 22px;
   box-shadow:0 18px 44px rgba(0,0,0,.35);
 }
+.login-hero{
+  position:relative;
+  display:flex;
+  justify-content:center;
+  align-items:center;
+  padding-top: 14px;
+  margin-bottom: 10px;
+}
+.login-bar{
+  position:absolute;
+  top: 6px;
+  width: 92%;
+  height: 34px;                    /* proporção “barra” */
+  border-radius: 999px;
+  background:#1f332c;              /* tom por trás */
+  border:1px solid #3d5e52;
+  z-index:0;
+  animation: floaty 4.2s ease-in-out infinite;
+}
 .login-logo{
+  position:relative;
+  z-index:2;
   width: 210px;
-  margin: 0 auto 12px auto;
-  display:block;
   border-radius: 14px;
   border:1px solid #3d5e52;
   background:#1f332c;
+  animation: floaty 4.2s ease-in-out infinite;
+  animation-delay: .18s;
 }
+@keyframes floaty{
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-7px); }
+}
+
 .login-title{
   text-align:center;
   color:#d4b15c;
   font-weight:900;
   font-size: 1.10rem;
-  margin: 4px 0 6px 0;
+  margin: 6px 0 6px 0;
 }
 .login-sub{
   text-align:center;
@@ -114,21 +140,19 @@ button[key^="ia_"]{
   opacity: .92;
 }
 
-/* Inputs mais “premium” */
+/* Inputs */
 [data-baseweb="input"] > div{
   background:#1f332c !important;
   border:1px solid #3d5e52 !important;
   border-radius:14px !important;
 }
-input{
-  color:#eaf2ef !important;
-}
+input{ color:#eaf2ef !important; }
 label{
   color:#bfd1ca !important;
   font-weight:700 !important;
 }
 
-/* Botão do login com destaque */
+/* Botões */
 .stButton > button{
   background:linear-gradient(135deg,#d4b15c,#b18b3b) !important;
   color:#263d33 !important;
@@ -215,12 +239,21 @@ def carregar_usuarios():
 def carregar_logs():
     return supabase.table("logs").select("*").order("id", desc=True).limit(200).execute().data
 
-# ================= LOGIN (VISUAL NOVO) =================
+# ================= LOGIN (barra atrás da logo + float) =================
 def login():
     st.markdown('<div class="login-wrap"><div class="login-box">', unsafe_allow_html=True)
-    st.markdown(f'<img class="login-logo" src="{LOGO_URL}">', unsafe_allow_html=True)
-    st.markdown('<div class="login-title">Acesso ao CRM</div>', unsafe_allow_html=True)
-    st.markdown('<div class="login-sub">Entre com seu usuário e senha para continuar</div>', unsafe_allow_html=True)
+
+    st.markdown(
+        f"""
+        <div class="login-hero">
+          <div class="login-bar"></div>
+          <img class="login-logo" src="{LOGO_URL}">
+        </div>
+        <div class="login-title">Acesso ao CRM</div>
+        <div class="login-sub">Entre com seu usuário e senha para continuar</div>
+        """,
+        unsafe_allow_html=True
+    )
 
     u = st.text_input("Usuário", placeholder="Ex: operador1")
     s = st.text_input("Senha", type="password", placeholder="Digite sua senha")
@@ -402,4 +435,4 @@ if menu == "Usuários":
 # ================= LOGS =================
 if menu == "Logs":
     st.title("📜 Logs")
-    st.dataframe(pd.DataFrame(carregar_logs()), use_container_width=True)
+    st.dataframe(pd.DataFrame(carreg
