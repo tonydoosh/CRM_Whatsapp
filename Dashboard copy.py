@@ -54,17 +54,6 @@ section[data-testid="stSidebar"] {
     padding-top: 2rem;
 }
 
-/* Login */
-.login-box {
-    max-width:420px;
-    margin:auto;
-    padding:40px;
-    background:#243F37;
-    border-radius:18px;
-    border:1px solid #3E665A;
-    box-shadow:0 0 25px rgba(0,0,0,.4);
-    text-align:center;
-}
 
 /* Cards */
 .card {
@@ -273,3 +262,4 @@ if menu == "Usuários":
 if menu == "Logs":
     st.title("📜 Logs")
     st.dataframe(pd.DataFrame(carregar_logs()), use_container_width=True)
+
