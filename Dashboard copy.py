@@ -17,6 +17,7 @@ LOGO_URL = "https://github.com/tonydoosh/CRM_Whatsapp/blob/main/logo.jpeg?raw=tr
 supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
 st.set_page_config(page_title="CRM WhatsApp", layout="wide")
 
+# ================= REMOVER SHADOW BAR (HEADER STREAMLIT) =================
 st.markdown("""
     <style>
         [data-testid="stHeader"] {
@@ -1019,7 +1020,3 @@ if menu == "Logs":
         st.dataframe(pd.DataFrame(logs), use_container_width=True)
     else:
         st.info("Nenhum log registrado")
-
-
-
-
