@@ -28,8 +28,7 @@ STATUS_OPCOES = [
     "cancelado",
 ]
 
-
-# ===================== UI (SMOOTH) =====================
+# ===================== UI (SMOOTH + RESPONSIVO) =====================
 def inject_smooth_ui():
     st.markdown(
         """
@@ -55,16 +54,6 @@ def inject_smooth_ui():
         box-shadow: 0 0 0 3px rgba(120,180,255,.12) !important;
       }
 
-      /* Buttons */
-      .stButton button {
-        border-radius: 14px !important;
-        border: 1px solid rgba(255,255,255,.10) !important;
-        background: rgba(255,255,255,.06) !important;
-        transition: transform .06s ease, background .15s ease, border .15s ease;
-      }
-      .stButton button:hover { background: rgba(255,255,255,.10) !important; border-color: rgba(255,255,255,.18) !important; }
-      .stButton button:active { transform: scale(0.98); }
-
       /* Cards */
       .smooth-card {
         background: linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.03));
@@ -85,14 +74,50 @@ def inject_smooth_ui():
 
       /* Dataframe */
       [data-testid="stDataFrame"] { border-radius: 16px; overflow: hidden; border: 1px solid rgba(255,255,255,.06); }
+
+      /* ===== RESPONSIVO: colunas quebram e não esmagam widgets ===== */
+      div[data-testid="stHorizontalBlock"]{
+        flex-wrap: wrap !important;
+        gap: 1rem !important;
+        align-items: stretch !important;
+      }
+
+      div[data-testid="column"]{
+        min-width: 320px !important;
+        flex: 1 1 320px !important;
+      }
+
+      @media (max-width: 480px){
+        div[data-testid="column"]{
+          min-width: 280px !important;
+          flex: 1 1 280px !important;
+        }
+      }
+
+      /* ===== BOTÕES/SELECTS: nunca quebrar texto em vertical ===== */
+      .stButton button{
+        width: 100% !important;
+        border-radius: 14px !important;
+        border: 1px solid rgba(255,255,255,.10) !important;
+        background: rgba(255,255,255,.06) !important;
+        transition: transform .06s ease, background .15s ease, border .15s ease;
+        white-space: nowrap !important;
+        overflow: hidden !important;
+        text-overflow: ellipsis !important;
+        padding: 0.60rem 0.85rem !important;
+      }
+      .stButton button:hover { background: rgba(255,255,255,.10) !important; border-color: rgba(255,255,255,.18) !important; }
+      .stButton button:active { transform: scale(0.98); }
+      .stButton button *{ white-space: nowrap !important; }
+
+      .stSelectbox, .stTextInput, .stTextArea{ width: 100% !important; }
+      .stSelectbox > div, .stTextInput input, .stTextArea textarea{ width: 100% !important; }
     </style>
     """,
         unsafe_allow_html=True,
     )
 
-
 inject_smooth_ui()
-
 
 # ===================== SUPABASE CRUD =====================
 def listar_clientes(status=None, operador=None, busca=None, limit=48):
@@ -105,12 +130,9 @@ def listar_clientes(status=None, operador=None, busca=None, limit=48):
 
     if status:
         q = q.eq("status", status)
-
     if operador:
         q = q.eq("operador", operador)
-
     if busca:
-        # OR: nome / telefone / cpf
         b = busca.replace('"', "").strip()
         q = q.or_(f"nome.ilike.%{b}%,telefone.ilike.%{b}%,cpf.ilike.%{b}%")
 
@@ -163,50 +185,46 @@ def cliente_card(cliente: dict, on_update_status, on_mark_contact, on_delete):
         unsafe_allow_html=True,
     )
 
-    a1, a2, a3 = st.columns([2, 1, 1])
-    with a1:
-        novo_status = st.selectbox(
-            "Status",
-            STATUS_OPCOES,
-            index=STATUS_OPCOES.index(status) if status in STATUS_OPCOES else 0,
-            key=f"status_{cliente['id']}",
-        )
-    with a2:
-        st.write("")
-        if st.button("Salvar", key=f"save_{cliente['id']}"):
-            on_update_status(cliente["id"], novo_status)
+    # Status sempre em linha cheia (evita esmagar)
+    novo_status = st.selectbox(
+        "Status",
+        STATUS_OPCOES,
+        index=STATUS_OPCOES.index(status) if status in STATUS_OPCOES else 0,
+        key=f"status_{cliente['id']}",
+    )
 
-    with a3:
-        st.write("")
-        if st.button("Contato", key=f"contact_{cliente['id']}"):
-            on_mark_contact(cliente["id"])
-
-    b1, b2 = st.columns([2, 1])
+    # Ações principais dinâmicas (não quebra texto em vertical)
+    b1, b2, b3 = st.columns(3, gap="small")
     with b1:
-        obs_nova = st.text_area(
-            "Observações",
-            value=cliente.get("observacoes") or "",
-            key=f"obs_{cliente['id']}",
-            height=80,
-        )
-        if st.button("Atualizar observações", key=f"obsbtn_{cliente['id']}"):
-            on_update_status(cliente["id"], novo_status, obs_override=obs_nova)
-
+        if st.button("Salvar", key=f"save_{cliente['id']}", use_container_width=True):
+            on_update_status(cliente["id"], novo_status)
     with b2:
-        st.write("")
-        st.write("")
-        if st.button("Excluir", key=f"del_{cliente['id']}"):
+        if st.button("Contato", key=f"contact_{cliente['id']}", use_container_width=True):
+            on_mark_contact(cliente["id"])
+    with b3:
+        if st.button("Excluir", key=f"del_{cliente['id']}", use_container_width=True):
             on_delete(cliente["id"])
+
+    # Observações
+    obs_nova = st.text_area(
+        "Observações",
+        value=cliente.get("observacoes") or "",
+        key=f"obs_{cliente['id']}",
+        height=90,
+    )
+
+    if st.button("Atualizar observações", key=f"obsbtn_{cliente['id']}", use_container_width=True):
+        on_update_status(cliente["id"], novo_status, obs_override=obs_nova)
 
 
 def tela_clientes_smooth():
     st.markdown("## 📋 Clientes")
     st.markdown(
-        "<p class='smooth-muted'>Operação em modo clean: filtros rápidos + cards com ações.</p>",
+        "<p class='smooth-muted'>Operação em modo clean: filtros rápidos + cards responsivos.</p>",
         unsafe_allow_html=True,
     )
 
-    f1, f2, f3, f4 = st.columns([1.2, 1.2, 1.6, 1])
+    f1, f2, f3, f4 = st.columns([1.2, 1.2, 1.6, 1], gap="small")
     with f1:
         filtro_status = st.selectbox("Status", ["Todos"] + STATUS_OPCOES, index=0)
     with f2:
@@ -249,7 +267,7 @@ def tela_clientes_smooth():
         st.warning("Cliente excluído.")
         st.rerun()
 
-    # Grid
+    # Grid: pode manter 3 (o CSS faz quebrar bonito quando a tela estreita)
     cols = 3
     for i in range(0, len(clientes), cols):
         row = st.columns(cols, gap="large")
@@ -269,7 +287,7 @@ def bloco_cadastro():
         unsafe_allow_html=True,
     )
 
-    c1, c2, c3 = st.columns(3)
+    c1, c2, c3 = st.columns(3, gap="small")
     with c1:
         nome = st.text_input("Nome *")
         cpf = st.text_input("CPF (opcional)")
@@ -280,7 +298,7 @@ def bloco_cadastro():
         status = st.selectbox("Status inicial", STATUS_OPCOES, index=0)
         prioridade = st.selectbox("Prioridade", [1, 2, 3], index=2)
 
-    d1, d2, d3 = st.columns([1.2, 1.2, 1.6])
+    d1, d2, d3 = st.columns([1.2, 1.2, 1.6], gap="small")
     with d1:
         produto = st.text_input("Produto (ex: consignado)")
     with d2:
@@ -290,7 +308,7 @@ def bloco_cadastro():
 
     obs = st.text_area("Observações", height=110)
 
-    if st.button("Salvar cliente", type="primary"):
+    if st.button("Salvar cliente", type="primary", use_container_width=True):
         if not nome.strip():
             st.error("Nome é obrigatório.")
             return
@@ -321,7 +339,10 @@ def bloco_cadastro():
 with st.sidebar:
     st.markdown("### ⚙️ Operação")
     pagina = st.radio("Navegação", ["Clientes", "Cadastrar", "Tabela (debug)"], index=0)
-    st.markdown("<div class='smooth-muted'>Dica: use filtros por status e busca pra rodar a fila.</div>", unsafe_allow_html=True)
+    st.markdown(
+        "<div class='smooth-muted'>Dica: use filtros por status e busca pra rodar a fila.</div>",
+        unsafe_allow_html=True,
+    )
 
 if pagina == "Cadastrar":
     bloco_cadastro()
@@ -332,4 +353,3 @@ elif pagina == "Tabela (debug)":
     st.dataframe(df, use_container_width=True, hide_index=True)
 else:
     tela_clientes_smooth()
-
