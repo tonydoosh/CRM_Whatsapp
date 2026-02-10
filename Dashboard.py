@@ -14,8 +14,8 @@ from supabase import create_client
 # ===================== CONFIG =====================
 st.set_page_config(page_title="Operação • Clientes", layout="wide")
 
-SUPABASE_URL = st.secrets["eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV1bnZyeGlmanh3bWh4b2t6bmJtIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2OTA2OTQwMSwiZXhwIjoyMDg0NjQ1NDAxfQ.unLG1tk2WExgA3pqzXkOJpzAEtwLjdlwSLiJnShKJU0"]
-SUPABASE_KEY = st.secrets["https://uunvrxifjxwmhxokznbm.supabase.co"]
+SUPABASE_URL = st.secrets["SUPABASE_URL"]
+SUPABASE_KEY = st.secrets["SUPABASE_KEY"]
 supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
 
 STATUS_OPCOES = [
@@ -332,3 +332,4 @@ elif pagina == "Tabela (debug)":
     st.dataframe(df, use_container_width=True, hide_index=True)
 else:
     tela_clientes_smooth()
+
